@@ -1,0 +1,9 @@
+{
+  "workspace": {
+    "library": [
+      ".isaac-api/vanilla",
+      ".isaac-api/no_repentogon_only"
+    ],
+    "checkThirdParty": false
+  }
+}
