@@ -1,0 +1,92 @@
+local M = {}
+
+-- NORMAL
+
+M.DIR = {
+  LEFT  = DoorSlot.LEFT0,
+  UP    = DoorSlot.UP0,
+  RIGHT = DoorSlot.RIGHT0,
+  DOWN  = DoorSlot.DOWN0,
+}
+
+M.SECRET_TYPE = {
+  REGULAR = RoomType.ROOM_SECRET,
+  SUPER = RoomType.ROOM_SUPERSECRET,
+  ULTRA = RoomType.ROOM_ULTRASECRET,
+}
+
+-- MAP
+
+M.MAP = {}
+
+M.MAP.COLS = 13
+M.MAP.ROWS = 13
+M.MAP.SIZE = M.MAP.COLS * M.MAP.ROWS
+
+-- CELL
+
+M.CELL = {}
+
+M.CELL.DIR_OFFSETS = {
+  [M.DIR.LEFT]  = -1,
+  [M.DIR.UP]    = -M.MAP.COLS,
+  [M.DIR.RIGHT] = 1,
+  [M.DIR.DOWN]  = M.MAP.COLS,
+}
+M.CELL.SHAPE_OFFSETS = {
+  [RoomShape.ROOMSHAPE_1x1] = { 0 },
+  [RoomShape.ROOMSHAPE_IH]  = { 0 },
+  [RoomShape.ROOMSHAPE_IV]  = { 0 },
+  [RoomShape.ROOMSHAPE_1x2] = { 0, M.MAP.COLS },
+  [RoomShape.ROOMSHAPE_IIV] = { 0, M.MAP.COLS },
+  [RoomShape.ROOMSHAPE_2x1] = { 0, 1 },
+  [RoomShape.ROOMSHAPE_IIH] = { 0, 1 },
+  [RoomShape.ROOMSHAPE_2x2] = { 0, 1, M.MAP.COLS, M.MAP.COLS + 1 },
+  [RoomShape.ROOMSHAPE_LTL] = { 1, M.MAP.COLS, M.MAP.COLS + 1 },
+  [RoomShape.ROOMSHAPE_LTR] = { 0, M.MAP.COLS, M.MAP.COLS + 1 },
+  [RoomShape.ROOMSHAPE_LBL] = { 0, 1, M.MAP.COLS + 1 },
+  [RoomShape.ROOMSHAPE_LBR] = { 0, 1, M.MAP.COLS },
+}
+
+M.CELL.CATEGORY = {
+  EMPTY = nil,
+  NORMAL = 1,
+  SPECIAL = 2,
+  BOSS = 3,
+  SECRET = 4,
+  CANDIDATE = 5,
+}
+M.CELL.ROOM_TYPE_TO_CATEGORY = {
+  [RoomType.ROOM_NULL]            = M.CELL.CATEGORY.EMPTY,
+  [RoomType.ROOM_DEFAULT]         = M.CELL.CATEGORY.NORMAL,
+  [RoomType.ROOM_SHOP]            = M.CELL.CATEGORY.SPECIAL,
+  [RoomType.ROOM_ERROR]           = M.CELL.CATEGORY.SPECIAL,
+  [RoomType.ROOM_TREASURE]        = M.CELL.CATEGORY.SPECIAL,
+  [RoomType.ROOM_BOSS]            = M.CELL.CATEGORY.BOSS,
+  [RoomType.ROOM_MINIBOSS]        = M.CELL.CATEGORY.SPECIAL,
+  [RoomType.ROOM_SECRET]          = M.CELL.CATEGORY.SECRET,
+  [RoomType.ROOM_SUPERSECRET]     = M.CELL.CATEGORY.SECRET,
+  [RoomType.ROOM_ARCADE]          = M.CELL.CATEGORY.SPECIAL,
+  [RoomType.ROOM_CURSE]           = M.CELL.CATEGORY.SPECIAL,
+  [RoomType.ROOM_CHALLENGE]       = M.CELL.CATEGORY.SPECIAL,
+  [RoomType.ROOM_LIBRARY]         = M.CELL.CATEGORY.SPECIAL,
+  [RoomType.ROOM_SACRIFICE]       = M.CELL.CATEGORY.SPECIAL,
+  [RoomType.ROOM_DEVIL]           = M.CELL.CATEGORY.SPECIAL,
+  [RoomType.ROOM_ANGEL]           = M.CELL.CATEGORY.SPECIAL,
+  [RoomType.ROOM_DUNGEON]         = M.CELL.CATEGORY.SPECIAL,
+  [RoomType.ROOM_BOSSRUSH]        = M.CELL.CATEGORY.SPECIAL,
+  [RoomType.ROOM_ISAACS]          = M.CELL.CATEGORY.SPECIAL,
+  [RoomType.ROOM_BARREN]          = M.CELL.CATEGORY.SPECIAL,
+  [RoomType.ROOM_CHEST]           = M.CELL.CATEGORY.SPECIAL,
+  [RoomType.ROOM_DICE]            = M.CELL.CATEGORY.SPECIAL,
+  [RoomType.ROOM_BLACK_MARKET]    = M.CELL.CATEGORY.SPECIAL,
+  [RoomType.ROOM_GREED_EXIT]      = M.CELL.CATEGORY.SPECIAL,
+  [RoomType.ROOM_PLANETARIUM]     = M.CELL.CATEGORY.SPECIAL,
+  [RoomType.ROOM_TELEPORTER]      = M.CELL.CATEGORY.SPECIAL,
+  [RoomType.ROOM_TELEPORTER_EXIT] = M.CELL.CATEGORY.SPECIAL,
+  [RoomType.ROOM_SECRET_EXIT]     = M.CELL.CATEGORY.SPECIAL,
+  [RoomType.ROOM_BLUE]            = M.CELL.CATEGORY.SPECIAL,
+  [RoomType.ROOM_ULTRASECRET]     = M.CELL.CATEGORY.SECRET,
+}
+
+return M
