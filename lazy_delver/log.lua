@@ -1,17 +1,29 @@
+---@module "lazy_delver.room"
+
 local C = require("lazy_delver.const")
 
 local M = {}
 
+---@param info string
 function M.info(info)
   print(info)
   Isaac.DebugString(info)
 end
 
--- map_data
+-- map
 
+---@param cid LD_Cid
+---@return string
+local function to_point(cid)
+  return "(" .. cid // C.MAP.ROWS .. ", " .. cid % C.MAP.COLS .. ")"
+end
+
+---@param cid LD_Cid
+---@param map LD_Map
+---@return string
 local function to_sym(cid, map)
   local cell = map.cells[cid]
-  if not cell or cell.category == C.CELL.CATEGORY.EMPTY then
+  if not cell then
     return " . "
   end
 
@@ -29,8 +41,7 @@ local function to_sym(cid, map)
     return "<S>"
   end
 
-  local room = map.rooms[cell.lid]
-  local offsets = C.CELL.SHAPE_OFFSETS[room.shape]
+  local offsets = C.CELL.SHAPE_OFFSETS[map.rooms[cell.lid].shape]
   local is_multi = (#offsets > 1)
   local lb, rb = "[", "]"
   if is_multi then
@@ -48,30 +59,60 @@ local function to_sym(cid, map)
   end
 end
 
-function M.map_print(map)
-  local to_point = function(cid)
-    return "(" .. cid // C.MAP.ROWS .. ", " .. cid % C.MAP.COLS .. ")"
-  end
 
-  M.info("Total rooms: " .. #map.rooms)
-  for cid, cell in pairs(map.cells) do
-    if cell.lid then
-      M.info(
-        to_sym(cid, map) ..
-        ": room " .. cell.lid ..
-        " in cell " .. to_point(cid) ..
-        ", type: " .. map.rooms[cell.lid].type
-      )
-    end
+---@param lid LD_Lid
+---@param map LD_Map
+function M.print_room(lid, map)
+  local room = map.rooms[lid]
+  if not room then return end
+
+  local cids = room.cids
+
+  local _, s_cid = next(cids)
+  assert(s_cid ~= nil)
+  local sym = to_sym(s_cid, map)
+
+  local parts = {}
+  for _, cid in pairs(cids) do
+    parts[#parts + 1] = to_point(cid)
   end
-  for cid, cell in pairs(map.cells) do
-    if cell.category == C.CELL.CATEGORY.CANDIDATE then
-      M.info(to_sym(cid, map) .. ": candidate in cell " .. to_point(cid))
-    end
+  local cells = " " .. table.concat(parts, " ")
+
+  M.info(
+    sym .. " room " .. lid .. 
+    ", type: " .. room.type .. 
+    ", cells:" .. cells)
+end
+
+---@param neighbors table<LD_Cid, LD_CellNeighbor>
+function M.print_neighbors_to_check(neighbors)
+  for cid, check in pairs(neighbors) do
+    M.info(
+      "need check " .. to_point(cid) ..
+      "'s " .. C.DIR_TO_STRING[check.dir] ..
+      ": " .. to_point(check.cid))
   end
 end
 
-function M.map_draw(map)
+---@param map LD_Map
+function M.print_map(map)
+  M.info("Total rooms: " .. #map.rooms + 1)
+
+  for lid = 0, #map.rooms do
+    M.print_room(lid, map)
+  end
+
+  for cid, cell in pairs(map.cells) do
+    if cell.category == C.CELL.CATEGORY.CANDIDATE then
+      M.info(to_sym(cid, map) .. " candidate in cell " .. to_point(cid))
+    end
+  end
+
+  M.info("")
+end
+
+---@param map LD_Map
+function M.draw_map(map)
   local lines = {}
 
   local header = "       "
@@ -92,6 +133,8 @@ function M.map_draw(map)
   for _, line in ipairs(lines) do
     M.info(line)
   end
+
+  M.info("")
 end
 
 return M

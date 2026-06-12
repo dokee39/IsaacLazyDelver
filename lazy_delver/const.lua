@@ -1,7 +1,11 @@
+---@module "lazy_delver.const"
+
 local M = {}
 
 -- GENERAL
 
+---@alias LD_Dir integer
+---@type { LEFT: LD_Dir, UP: LD_Dir, RIGHT: LD_Dir, DOWN: LD_Dir }
 M.DIR = {
   LEFT  = DoorSlot.LEFT0,
   UP    = DoorSlot.UP0,
@@ -9,12 +13,31 @@ M.DIR = {
   DOWN  = DoorSlot.DOWN0,
 }
 
+---@type table<LD_Dir, LD_Dir>
+M.DIR_REVERSE = {
+  [M.DIR.LEFT]  = M.DIR.RIGHT,
+  [M.DIR.UP]    = M.DIR.DOWN,
+  [M.DIR.RIGHT] = M.DIR.LEFT,
+  [M.DIR.DOWN]  = M.DIR.UP,
+}
+
+---@type table<LD_Dir, string>
+M.DIR_TO_STRING = {
+  [M.DIR.LEFT]  = "left",
+  [M.DIR.UP]    = "up",
+  [M.DIR.RIGHT] = "right",
+  [M.DIR.DOWN]  = "down",
+}
+
+---@alias LD_SecretType integer
+---@type { REGULAR: LD_SecretType, SUPER: LD_SecretType, ULTRA: LD_SecretType }
 M.SECRET_TYPE = {
   REGULAR = RoomType.ROOM_SECRET,
   SUPER = RoomType.ROOM_SUPERSECRET,
   ULTRA = RoomType.ROOM_ULTRASECRET,
 }
 
+---@type table<LevelStage, table<StageType, string>>
 M.STAGE_NAME = {
   [LevelStage.STAGE1_1] = {
     [StageType.STAGETYPE_ORIGINAL]     = "Basement 1",
@@ -93,20 +116,26 @@ M.STAGE_NAME = {
 
 M.MAP = {}
 
+---@type integer
 M.MAP.COLS = 13
+---@type integer
 M.MAP.ROWS = 13
+---@type integer
 M.MAP.SIZE = M.MAP.COLS * M.MAP.ROWS
 
 -- CELL
 
 M.CELL = {}
 
+---@type table<LD_Dir, integer>
 M.CELL.DIR_OFFSETS = {
   [M.DIR.LEFT]  = -1,
   [M.DIR.UP]    = -M.MAP.COLS,
   [M.DIR.RIGHT] = 1,
   [M.DIR.DOWN]  = M.MAP.COLS,
 }
+
+---@type table<RoomShape, integer[]>
 M.CELL.SHAPE_OFFSETS = {
   [RoomShape.ROOMSHAPE_1x1] = { 0 },
   [RoomShape.ROOMSHAPE_IH]  = { 0 },
@@ -122,16 +151,18 @@ M.CELL.SHAPE_OFFSETS = {
   [RoomShape.ROOMSHAPE_LBR] = { 0, 1, M.MAP.COLS },
 }
 
+---@alias LD_CellCategory integer
+---@type { NORMAL: integer, SPECIAL: integer, BOSS: integer, SECRET: integer, CANDIDATE: integer }
 M.CELL.CATEGORY = {
-  EMPTY = nil,
   NORMAL = 1,
   SPECIAL = 2,
   BOSS = 3,
   SECRET = 4,
   CANDIDATE = 5,
 }
+
+---@type table<RoomType, LD_CellCategory>
 M.CELL.ROOM_TYPE_TO_CATEGORY = {
-  [RoomType.ROOM_NULL]            = M.CELL.CATEGORY.EMPTY,
   [RoomType.ROOM_DEFAULT]         = M.CELL.CATEGORY.NORMAL,
   [RoomType.ROOM_SHOP]            = M.CELL.CATEGORY.SPECIAL,
   [RoomType.ROOM_ERROR]           = M.CELL.CATEGORY.SPECIAL,
