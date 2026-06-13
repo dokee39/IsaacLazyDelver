@@ -4,8 +4,7 @@ local M = {}
 
 -- GENERAL
 
----@alias LD_Dir integer
----@type { LEFT: LD_Dir, UP: LD_Dir, RIGHT: LD_Dir, DOWN: LD_Dir }
+---@enum LD_Dir
 M.DIR = {
   LEFT  = DoorSlot.LEFT0,
   UP    = DoorSlot.UP0,
@@ -29,8 +28,7 @@ M.DIR_TO_STRING = {
   [M.DIR.DOWN]  = "down",
 }
 
----@alias LD_SecretType integer
----@type { REGULAR: LD_SecretType, SUPER: LD_SecretType, ULTRA: LD_SecretType }
+---@enum LD_SecretType
 M.SECRET_TYPE = {
   REGULAR = RoomType.ROOM_SECRET,
   SUPER = RoomType.ROOM_SUPERSECRET,
@@ -151,8 +149,7 @@ M.CELL.SHAPE_OFFSETS = {
   [RoomShape.ROOMSHAPE_LBR] = { 0, 1, M.MAP.COLS },
 }
 
----@alias LD_CellCategory integer
----@type { NORMAL: integer, SPECIAL: integer, BOSS: integer, SECRET: integer, CANDIDATE: integer }
+---@enum LD_CellCategory
 M.CELL.CATEGORY = {
   NORMAL = 1,
   SPECIAL = 2,
@@ -192,6 +189,35 @@ M.CELL.ROOM_TYPE_TO_CATEGORY = {
   [RoomType.ROOM_SECRET_EXIT]     = M.CELL.CATEGORY.SPECIAL,
   [RoomType.ROOM_BLUE]            = M.CELL.CATEGORY.SPECIAL,
   [RoomType.ROOM_ULTRASECRET]     = M.CELL.CATEGORY.SECRET,
+}
+
+--- ROOM_ENTITY
+
+M.ROOM_ENTITY = {}
+
+---@type table<EntityType, boolean>
+M.ROOM_ENTITY.IS_BLOCKED = {
+  [EntityType.ENTITY_FIREPLACE]              = true,
+  [EntityType.ENTITY_MOVABLE_TNT]            = true,
+  [EntityType.ENTITY_STONEHEAD]              = true,
+  [EntityType.ENTITY_GAPING_MAW]             = true,
+  [EntityType.ENTITY_BROKEN_GAPING_MAW]      = true,
+  [EntityType.ENTITY_CONSTANT_STONE_SHOOTER] = true,
+  [EntityType.ENTITY_QUAKE_GRIMACE]          = true,
+  [EntityType.ENTITY_BOMB_GRIMACE]           = true,
+  [EntityType.ENTITY_BRIMSTONE_HEAD]         = true,
+  [EntityType.ENTITY_STONE_EYE]              = true,
+}
+
+--- GRID_ENTITY
+
+M.GRID_ENTITY = {}
+
+---@type table<GridEntityType, boolean>
+M.GRID_ENTITY.NOT_BLOCKED = {
+  [GridEntityType.GRID_NULL]       = true,
+  [GridEntityType.GRID_DECORATION] = true,
+  [GridEntityType.GRID_SPIDERWEB]  = true,
 }
 
 return M

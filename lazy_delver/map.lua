@@ -9,6 +9,8 @@ local M = {}
 
 ---@type boolean
 local ignored = false
+---@type integer?
+local seed = nil
 ---@type LevelStage?
 local stage = nil
 ---@type StageType?
@@ -20,8 +22,8 @@ local stage_type = nil
 ---@class LD_CellNeighbor
 ---@field dir LD_Dir
 ---@field cid LD_Cid
-
 ---@alias LD_CellNeighbors table<LD_Dir, LD_Cid>
+---@alias LD_RoomNeighbors LD_CellNeighbor[]
 
 ---@class LD_Cell
 ---@field cid LD_Cid
@@ -34,6 +36,7 @@ M.cells = {}
 
 ---@class LD_Room
 ---@field lid integer
+---@field tf_cid integer
 ---@field cids integer[]
 ---@field shape RoomShape
 ---@field type RoomType
@@ -49,17 +52,17 @@ local function init(level)
 end
 
 
----@param room_raw RoomDescriptor
-local function parse_room(room_raw)
-  local data = room_raw.Data
-  local lid = room_raw.ListIndex
+---@param room_desc RoomDescriptor
+local function parse_room(room_desc)
+  local data = room_desc.Data
+  local lid = room_desc.ListIndex
   local shape_offsets = C.CELL.SHAPE_OFFSETS[data.Shape]
   local category = C.CELL.ROOM_TYPE_TO_CATEGORY[data.Type]
   local secret_type = category == C.CELL.CATEGORY.SECRET and data.Type or nil
 
   local cids = {}
   for i = 1, #shape_offsets do
-    cids[i] = shape_offsets[i] + room_raw.GridIndex
+    cids[i] = shape_offsets[i] + room_desc.GridIndex
     M.cells[cids[i]] = {
       cid = cids[i],
       lid = lid,
@@ -71,6 +74,7 @@ local function parse_room(room_raw)
 
   M.rooms[lid] = {
     lid = lid,
+    tf_cid = room_desc.GridIndex,
     cids = cids,
     shape = data.Shape,
     type = data.Type,
@@ -149,13 +153,13 @@ local function candidate_type(cid)
   end
 
   local total_count = normal_count + special_count
-  if total_count == 0 then
-    return nil
-  elseif total_count == 1 and normal_count == 1 then
+  if total_count == 1 and normal_count == 1 then
     return C.SECRET_TYPE.SUPER
-  else
+  elseif total_count > 1 then
     return C.SECRET_TYPE.REGULAR
   end
+
+  return nil
 end
 
 local function find_candidates()
@@ -220,6 +224,12 @@ end
 
 ---@return boolean
 function M.has_changed()
+  local current_seed = Game():GetSeeds():GetStartSeed()
+  if seed ~= current_seed then
+    seed = current_seed
+    return true
+  end
+
   local level = Game():GetLevel()
   return
     level:GetStage() ~= stage or
@@ -227,7 +237,7 @@ function M.has_changed()
 end
 
 ---@param lid LD_Lid
----@return table<LD_Cid, LD_CellNeighbor>
+---@return LD_RoomNeighbors
 function M.get_neighbors_to_check(lid)
   local result = {}
   local room = M.rooms[lid]
@@ -239,7 +249,7 @@ function M.get_neighbors_to_check(lid)
       local n_cell = M.cells[n_cid]
       local dir_reverse = C.DIR_REVERSE[dir]
       if n_cell and n_cell.neighbors_to_check[dir_reverse] == cid then
-        result[n_cid] = { dir = dir_reverse, cid = cid }
+        result[#result + 1] = { dir = dir, cid = n_cid }
       end
     end
   end

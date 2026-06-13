@@ -79,18 +79,17 @@ function M.print_room(lid, map)
   local cells = " " .. table.concat(parts, " ")
 
   M.info(
-    sym .. " room " .. lid .. 
-    ", type: " .. room.type .. 
+    sym .. " room " .. lid ..
+    ", type: " .. room.type ..
     ", cells:" .. cells)
 end
 
 ---@param neighbors table<LD_Cid, LD_CellNeighbor>
 function M.print_neighbors_to_check(neighbors)
-  for cid, check in pairs(neighbors) do
+  for _, n in pairs(neighbors) do
     M.info(
-      "need check " .. to_point(cid) ..
-      "'s " .. C.DIR_TO_STRING[check.dir] ..
-      ": " .. to_point(check.cid))
+      "need check " .. to_point(n.cid) ..
+      " (" .. C.DIR_TO_STRING[n.dir] .. ")")
   end
 end
 
