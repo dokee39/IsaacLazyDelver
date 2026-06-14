@@ -25,12 +25,16 @@ local stage_type = nil
 ---@alias LD_CellNeighbors table<LD_Dir, LD_Cid>
 ---@alias LD_RoomNeighbors LD_CellNeighbor[]
 
+---@class LD_ProspectInfo
+---@field secret_type LD_SecretType
+---@field neighbors_to_check LD_CellNeighbors
+---@field marker_status LD_MarkerStatus
+
 ---@class LD_Cell
 ---@field cid LD_Cid
 ---@field lid LD_Lid?
----@field category LD_CellCategory
----@field secret_type LD_SecretType?
----@field neighbors_to_check LD_CellNeighbors
+---@field category LD_CellCategory?
+---@field prospect_info LD_ProspectInfo?
 ---@type table<LD_Cid, LD_Cell>
 M.cells = {}
 
@@ -67,8 +71,11 @@ local function parse_room(room_desc)
       cid = cids[i],
       lid = lid,
       category = category,
-      secret_type = secret_type,
-      neighbors_to_check = {},
+      prospect_info = secret_type and {
+        secret_type = secret_type,
+        neighbors_to_check = {},
+        marker_status = C.CELL.MARKER_STATUS.HIDDEN,
+      } or nil,
     }
   end
 
@@ -138,16 +145,21 @@ local function candidate_type(cid)
              n_cell.category == C.CELL.CATEGORY.SPECIAL then
         local shape = M.rooms[n_cell.lid].shape
         if (dir == C.DIR.UP or dir == C.DIR.DOWN) and
-          (shape == RoomShape.ROOMSHAPE_IH or shape == RoomShape.ROOMSHAPE_IIH) then
+           (shape == RoomShape.ROOMSHAPE_IH or
+            shape == RoomShape.ROOMSHAPE_IIH) then
           return nil
         end
         if (dir == C.DIR.LEFT or dir == C.DIR.RIGHT) and
-          (shape == RoomShape.ROOMSHAPE_IV or shape == RoomShape.ROOMSHAPE_IIV) then
+           (shape == RoomShape.ROOMSHAPE_IV or
+            shape == RoomShape.ROOMSHAPE_IIV) then
           return nil
         end
 
-        if n_cell.category == C.CELL.CATEGORY.NORMAL then normal_count = normal_count + 1 end
-        if n_cell.category == C.CELL.CATEGORY.SPECIAL then special_count = special_count + 1 end
+        if n_cell.category == C.CELL.CATEGORY.NORMAL then
+          normal_count = normal_count + 1
+        elseif n_cell.category == C.CELL.CATEGORY.SPECIAL then
+          special_count = special_count + 1
+        end
       end
     end
   end
@@ -177,8 +189,11 @@ local function find_candidates()
       cid = cid,
       lid = nil,
       category = C.CELL.CATEGORY.CANDIDATE,
-      secret_type = type,
-      neighbors_to_check = get_neighbors_to_check(cid, type),
+      prospect_info = {
+        secret_type = type,
+        neighbors_to_check = get_neighbors_to_check(cid, type),
+        marker_status = C.CELL.MARKER_STATUS.HIDDEN,
+      },
     }
 
     ::continue::
@@ -191,7 +206,9 @@ function M.reload()
   init(level)
 
   log.info("<=== New Level: " .. C.STAGE_NAME[stage][stage_type] .. " ===>")
-  if level:IsAscent() or level:GetStage() == LevelStage.STAGE8 or Game():IsGreedMode() then
+  if level:IsAscent() or
+     level:GetStage() == LevelStage.STAGE8 or
+     Game():IsGreedMode() then
     ignored = true
     log.info("This level was ignored.")
     return
@@ -205,8 +222,9 @@ function M.reload()
     parse_room(rooms_raw:Get(lid))
   end
   for cid, cell in pairs(M.cells) do
-    if cell.category == C.CELL.CATEGORY.SECRET then
-      cell.neighbors_to_check = get_neighbors_to_check(cid, cell.secret_type)
+    local pi = cell.prospect_info
+    if cell.category == C.CELL.CATEGORY.SECRET and pi then
+      pi.neighbors_to_check = get_neighbors_to_check(cid, pi.secret_type)
     end
   end
 
@@ -248,7 +266,9 @@ function M.get_neighbors_to_check(lid)
     for dir, n_cid in pairs(get_neighbors(cid)) do
       local n_cell = M.cells[n_cid]
       local dir_reverse = C.DIR_REVERSE[dir]
-      if n_cell and n_cell.neighbors_to_check[dir_reverse] == cid then
+      if n_cell and
+         n_cell.prospect_info and
+         n_cell.prospect_info.neighbors_to_check[dir_reverse] == cid then
         result[#result + 1] = { dir = dir, cid = n_cid }
       end
     end

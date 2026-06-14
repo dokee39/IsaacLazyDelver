@@ -90,7 +90,8 @@ local function check(room, neighbors)
     local cid = n.cid - C.CELL.DIR_OFFSETS[n.dir]
     local d_gid = door_gid(cid - room.tf_cid, n.dir, w)
     if visited[d_gid // w][d_gid % w] then
-      map.cells[n.cid].neighbors_to_check[C.DIR_REVERSE[n.dir]] = nil
+      map.cells[n.cid].prospect_info
+        .neighbors_to_check[C.DIR_REVERSE[n.dir]] = nil
     else
       if map.cells[n.cid].category == C.CELL.CATEGORY.CANDIDATE then
         map.cells[n.cid] = nil

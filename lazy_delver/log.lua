@@ -53,10 +53,12 @@ local function to_sym(cid, map)
 
   if cell.category == C.CELL.CATEGORY.CANDIDATE then
     local cnt = 0
-    for _ in pairs(cell.neighbors_to_check) do cnt = cnt + 1 end
-    return C.CELL.CANDIDATE_SYM[cell.secret_type][cnt == 0]
+    for _ in pairs(cell.prospect_info.neighbors_to_check) do
+      cnt = cnt + 1
+    end
+    return C.CELL.CANDIDATE_SYM[cell.prospect_info.secret_type][cnt == 0]
   elseif cell.category == C.CELL.CATEGORY.SECRET then
-    return C.CELL.SECRET_SYM[cell.secret_type]
+    return C.CELL.SECRET_SYM[cell.prospect_info.secret_type]
   end
 
   local offsets = C.CELL.SHAPE_OFFSETS[map.rooms[cell.lid].shape]
@@ -118,7 +120,8 @@ function M.print_map(map)
 
   for cid, cell in pairs(map.cells) do
     if cell.category == C.CELL.CATEGORY.CANDIDATE then
-      lines[#lines + 1] = to_sym(cid, map) .. " candidate in cell " .. to_point(cid)
+      lines[#lines + 1] =
+        to_sym(cid, map) .. " candidate in cell " .. to_point(cid)
     end
   end
 

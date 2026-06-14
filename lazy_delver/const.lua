@@ -210,6 +210,13 @@ M.CELL.ROOM_TYPE_TO_CATEGORY = {
   [RoomType.ROOM_ULTRASECRET]     = M.CELL.CATEGORY.SECRET,
 }
 
+---@enum LD_MarkerStatus
+M.CELL.MARKER_STATUS = {
+  HIDDEN = 0,
+  DIM = 1,
+  BRIGHT = 2,
+}
+
 --- ROOM_ENTITY
 
 M.ROOM_ENTITY = {}
