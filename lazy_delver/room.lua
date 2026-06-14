@@ -92,7 +92,12 @@ local function check(room, neighbors)
     if visited[d_gid // w][d_gid % w] then
       map.cells[n.cid].neighbors_to_check[C.DIR_REVERSE[n.dir]] = nil
     else
-      map.cells[n.cid] = nil
+      if map.cells[n.cid].category == C.CELL.CATEGORY.CANDIDATE then
+        map.cells[n.cid] = nil
+      else
+        log.error("Try to remove a non-candidate room: ")
+        log.print_room(map.cells[n.cid].lid, map):error()
+      end
     end
 
     ::continue::
@@ -108,13 +113,13 @@ function M.check()
   local lid = Game():GetLevel():GetCurrentRoomDesc().ListIndex
   local neighbors = map.get_neighbors_to_check(lid)
   log.info("=== Entered New Room ===")
-  log.print_room(lid, map)
-  log.print_neighbors_to_check(neighbors)
+  log.print_room(lid, map):info()
+  log.print_neighbors_to_check(neighbors):info()
 
   local room = map.rooms[lid]
   check(room, neighbors)
 
-  log.info("")
+  log.draw_map(map):info()
 end
 
 return M

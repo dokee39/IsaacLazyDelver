@@ -158,6 +158,25 @@ M.CELL.CATEGORY = {
   CANDIDATE = 5,
 }
 
+---@type table<LD_SecretType, table<boolean, string>>
+M.CELL.CANDIDATE_SYM = {
+  [M.SECRET_TYPE.REGULAR] = { [true] = " R ", [false] = " r " },
+  [M.SECRET_TYPE.SUPER]   = { [true] = " S ", [false] = " s " },
+  [M.SECRET_TYPE.ULTRA]   = { [true] = " U ", [false] = " u " },
+}
+---@type table<LD_SecretType, string>
+M.CELL.SECRET_SYM = {
+  [M.SECRET_TYPE.REGULAR] = "<R>",
+  [M.SECRET_TYPE.SUPER]   = "<S>",
+  [M.SECRET_TYPE.ULTRA]   = "<U>",
+}
+---@type table<LD_CellCategory, string>
+M.CELL.OTHER_SYM = {
+  [M.CELL.CATEGORY.BOSS]    = "B",
+  [M.CELL.CATEGORY.NORMAL]  = "N",
+  [M.CELL.CATEGORY.SPECIAL] = "C",
+}
+
 ---@type table<RoomType, LD_CellCategory>
 M.CELL.ROOM_TYPE_TO_CATEGORY = {
   [RoomType.ROOM_DEFAULT]         = M.CELL.CATEGORY.NORMAL,

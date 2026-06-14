@@ -213,8 +213,8 @@ function M.reload()
   find_candidates()
 
   log.info("Map loading complete!\n")
-  log.print_map(M)
-  log.draw_map(M)
+  log.print_map(M):info()
+  log.draw_map(M):info()
 end
 
 ---@return boolean

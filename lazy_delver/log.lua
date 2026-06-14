@@ -1,13 +1,37 @@
----@module "lazy_delver.room"
+---@module "lazy_delver.log"
 
 local C = require("lazy_delver.const")
 
 local M = {}
 
----@param info string
-function M.info(info)
-  print(info)
-  Isaac.DebugString(info)
+---@param s string
+function M.info(s)
+  print(s)
+  Isaac.DebugString(s)
+end
+---@param s string
+function M.error(s)
+  print("[ERROR] " .. s)
+  Isaac.DebugString("[ERROR] " .. s)
+end
+
+local Output = {}
+Output.__index = Output
+
+local function new_output(lines)
+  return setmetatable({ _lines = lines }, Output)
+end
+
+function Output:info()
+  for _, line in ipairs(self._lines) do
+    M.info(line)
+  end
+end
+
+function Output:error()
+  for _, line in ipairs(self._lines) do
+    M.error(line)
+  end
 end
 
 -- map
@@ -28,17 +52,11 @@ local function to_sym(cid, map)
   end
 
   if cell.category == C.CELL.CATEGORY.CANDIDATE then
-    if cell.secret_type == C.SECRET_TYPE.REGULAR then
-      return " R "
-    elseif cell.secret_type == C.SECRET_TYPE.SUPER then
-      return " S "
-    elseif cell.secret_type == C.SECRET_TYPE.ULTRA then
-      return " U "
-    else
-      return " ? "
-    end
+    local cnt = 0
+    for _ in pairs(cell.neighbors_to_check) do cnt = cnt + 1 end
+    return C.CELL.CANDIDATE_SYM[cell.secret_type][cnt == 0]
   elseif cell.category == C.CELL.CATEGORY.SECRET then
-    return "<S>"
+    return C.CELL.SECRET_SYM[cell.secret_type]
   end
 
   local offsets = C.CELL.SHAPE_OFFSETS[map.rooms[cell.lid].shape]
@@ -48,15 +66,7 @@ local function to_sym(cid, map)
     lb, rb = "{", "}"
   end
 
-  if cell.category == C.CELL.CATEGORY.NORMAL then
-    return lb .. "N" .. rb
-  elseif cell.category == C.CELL.CATEGORY.SPECIAL then
-    return lb .. "C" .. rb
-  elseif cell.category == C.CELL.CATEGORY.BOSS then
-    return lb .. "B" .. rb
-  else
-    return lb .. "?" .. rb
-  end
+  return lb .. C.CELL.OTHER_SYM[cell.category] .. rb
 end
 
 
@@ -78,36 +88,42 @@ function M.print_room(lid, map)
   end
   local cells = " " .. table.concat(parts, " ")
 
-  M.info(
-    sym .. " room " .. lid ..
-    ", type: " .. room.type ..
-    ", cells:" .. cells)
+  local line = sym .. " room " .. lid ..
+              ", type: " .. room.type ..
+              ", cells:" .. cells
+  return new_output({ line })
 end
 
----@param neighbors table<LD_Cid, LD_CellNeighbor>
+---@param neighbors LD_RoomNeighbors
 function M.print_neighbors_to_check(neighbors)
+  local lines = {}
   for _, n in pairs(neighbors) do
-    M.info(
-      "need check " .. to_point(n.cid) ..
-      " (" .. C.DIR_TO_STRING[n.dir] .. ")")
+    lines[#lines + 1] = "need check " .. to_point(n.cid) ..
+                        " (" .. C.DIR_TO_STRING[n.dir] .. ")"
   end
+  return new_output(lines)
 end
 
 ---@param map LD_Map
 function M.print_map(map)
-  M.info("Total rooms: " .. #map.rooms + 1)
+  local lines = {}
+  lines[#lines + 1] = "Total rooms: " .. #map.rooms + 1
 
   for lid = 0, #map.rooms do
-    M.print_room(lid, map)
+    local out = M.print_room(lid, map)
+    for _, line in ipairs(out._lines) do
+      lines[#lines + 1] = line
+    end
   end
 
   for cid, cell in pairs(map.cells) do
     if cell.category == C.CELL.CATEGORY.CANDIDATE then
-      M.info(to_sym(cid, map) .. " candidate in cell " .. to_point(cid))
+      lines[#lines + 1] = to_sym(cid, map) .. " candidate in cell " .. to_point(cid)
     end
   end
 
-  M.info("")
+  lines[#lines + 1] = ""
+  return new_output(lines)
 end
 
 ---@param map LD_Map
@@ -118,7 +134,7 @@ function M.draw_map(map)
   for col = 0, C.MAP.COLS - 1 do
     header = header .. string.format("%2d ", col)
   end
-  table.insert(lines, header)
+  lines[#lines + 1] = header
 
   for row = 0, C.MAP.ROWS - 1 do
     local line = string.format("Row %2d:", row)
@@ -126,14 +142,11 @@ function M.draw_map(map)
       local cid = row * C.MAP.COLS + col
       line = line .. to_sym(cid, map)
     end
-    table.insert(lines, line)
+    lines[#lines + 1] = line
   end
 
-  for _, line in ipairs(lines) do
-    M.info(line)
-  end
-
-  M.info("")
+  lines[#lines + 1] = ""
+  return new_output(lines)
 end
 
 return M
