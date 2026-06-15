@@ -14,7 +14,10 @@ local CELL_H = 15
 
 local FLAG_VISIBLE = 1
 
----@type Vector
+local marker_sprite = Sprite()
+marker_sprite:Load("gfx/lazy_delver/marker.anm2", true)
+marker_sprite:SetFrame(marker_sprite:GetDefaultAnimation(), 1)
+
 local pos_origin = Vector.Zero
 
 ---@param rooms CppList_RoomDescriptor
@@ -46,7 +49,7 @@ local function clear_if_found_secret(rooms)
     local all_found = true
     for _, room in pairs(map.rooms) do
       local desc = rooms:Get(room.lid)
-      if desc and desc.Data.Type == secret_type and desc.VisitedCount == 0 then
+      if desc and desc.Data.Type == secret_type and (desc.DisplayFlags & 1) == 0 then
         all_found = false
       end
     end
@@ -124,15 +127,16 @@ function M.render()
     if pi and pi.marker_status ~= C.MARKER.STATUS.HIDDEN and
               pi.marker_status ~= C.MARKER.STATUS.FOUND then
       local r, c = cid // C.MAP.COLS, cid % C.MAP.COLS
-      local pos = Vector(pos_origin.X + c * CELL_W + 7,
-                         pos_origin.Y + r * CELL_H + 2)
+      local pos = Vector(pos_origin.X + c * CELL_W + 8,
+                         pos_origin.Y + r * CELL_H + 7)
       local colors = C.MARKER.COLORS[pi.secret_type]
       local alpha = C.MARKER.ALPHA[pi.marker_status]
-      Isaac.RenderScaledText(
-        "*", pos.X, pos.Y, 1, 1,
+      marker_sprite.Color = Color(
         colors[1], colors[2], colors[3],
-        alpha * (tab_hold_cnt / TAB_HOLD_MAX)
+        alpha * (tab_hold_cnt / TAB_HOLD_MAX),
+        0, 0, 0
       )
+      marker_sprite:Render(pos)
     end
   end
 end

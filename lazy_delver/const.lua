@@ -254,7 +254,7 @@ M.MARKER.STATUS = {
 M.MARKER.ALPHA = {
   [M.MARKER.STATUS.HIDDEN] = 0.0,
   [M.MARKER.STATUS.DIM]    = 0.36,
-  [M.MARKER.STATUS.BRIGHT] = 0.8,
+  [M.MARKER.STATUS.BRIGHT] = 1.0,
   [M.MARKER.STATUS.FOUND]  = 0.0,
 }
 ---@type table<LD_SecretType, number[]>
