@@ -15,26 +15,29 @@ function M.error(s)
   Isaac.DebugString("[ERROR] " .. s)
 end
 
-local Output = {}
-Output.__index = Output
+---@class LD_Log
+---@field _lines string[]
+local Log = {}
+Log.__index = Log
 
-local function new_output(lines)
-  return setmetatable({ _lines = lines }, Output)
+---@param lines string[]
+---@return LD_Log
+function Log:new(lines)
+  return setmetatable({ _lines = lines }, self)
 end
 
-function Output:info()
+function Log:info()
   for _, line in ipairs(self._lines) do
     M.info(line)
   end
 end
 
-function Output:error()
+function Log:error()
   for _, line in ipairs(self._lines) do
     M.error(line)
   end
 end
 
--- map
 
 ---@param cid LD_Cid
 ---@return string
@@ -74,9 +77,10 @@ end
 
 ---@param lid LD_Lid
 ---@param map LD_Map
+---@return LD_Log
 function M.print_room(lid, map)
   local room = map.rooms[lid]
-  if not room then return end
+  if not room then return Log:new({}) end
 
   local cids = room.cids
 
@@ -93,20 +97,22 @@ function M.print_room(lid, map)
   local line = sym .. " room " .. lid ..
               ", type: " .. room.type ..
               ", cells:" .. cells
-  return new_output({ line })
+  return Log:new({ line })
 end
 
 ---@param neighbors LD_RoomNeighbors
+---@return LD_Log
 function M.print_neighbors_to_check(neighbors)
   local lines = {}
   for _, n in pairs(neighbors) do
     lines[#lines + 1] = "need check " .. to_point(n.cid) ..
                         " (" .. C.DIR_TO_STRING[n.dir] .. ")"
   end
-  return new_output(lines)
+  return Log:new(lines)
 end
 
 ---@param map LD_Map
+---@return LD_Log
 function M.print_map(map)
   local lines = {}
   lines[#lines + 1] = "Total rooms: " .. #map.rooms + 1
@@ -126,10 +132,11 @@ function M.print_map(map)
   end
 
   lines[#lines + 1] = ""
-  return new_output(lines)
+  return Log:new(lines)
 end
 
 ---@param map LD_Map
+---@return LD_Log
 function M.draw_map(map)
   local lines = {}
 
@@ -149,7 +156,7 @@ function M.draw_map(map)
   end
 
   lines[#lines + 1] = ""
-  return new_output(lines)
+  return Log:new(lines)
 end
 
 return M

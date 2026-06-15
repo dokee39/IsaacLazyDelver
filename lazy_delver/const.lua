@@ -210,13 +210,6 @@ M.CELL.ROOM_TYPE_TO_CATEGORY = {
   [RoomType.ROOM_ULTRASECRET]     = M.CELL.CATEGORY.SECRET,
 }
 
----@enum LD_MarkerStatus
-M.CELL.MARKER_STATUS = {
-  HIDDEN = 0,
-  DIM = 1,
-  BRIGHT = 2,
-}
-
 --- ROOM_ENTITY
 
 M.ROOM_ENTITY = {}
@@ -244,6 +237,31 @@ M.GRID_ENTITY.NOT_BLOCKED = {
   [GridEntityType.GRID_NULL]       = true,
   [GridEntityType.GRID_DECORATION] = true,
   [GridEntityType.GRID_SPIDERWEB]  = true,
+}
+
+--- MARKER
+
+M.MARKER = {}
+
+---@enum LD_MarkerStatus
+M.MARKER.STATUS = {
+  HIDDEN = 0,
+  DIM    = 1,
+  BRIGHT = 2,
+  FOUND  = 3,
+}
+---@type table<LD_MarkerStatus, number>
+M.MARKER.ALPHA = {
+  [M.MARKER.STATUS.HIDDEN] = 0.0,
+  [M.MARKER.STATUS.DIM]    = 0.36,
+  [M.MARKER.STATUS.BRIGHT] = 0.8,
+  [M.MARKER.STATUS.FOUND]  = 0.0,
+}
+---@type table<LD_SecretType, number[]>
+M.MARKER.COLORS = {
+  [M.SECRET_TYPE.REGULAR] = { 1.0, 1.0, 1.0 },
+  [M.SECRET_TYPE.SUPER]   = { 1.0, 0.84, 0.0 },
+  [M.SECRET_TYPE.ULTRA]   = { 1.0, 0.0, 0.0 },
 }
 
 return M

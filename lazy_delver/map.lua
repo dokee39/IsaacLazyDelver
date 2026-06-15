@@ -74,7 +74,7 @@ local function parse_room(room_desc)
       prospect_info = secret_type and {
         secret_type = secret_type,
         neighbors_to_check = {},
-        marker_status = C.CELL.MARKER_STATUS.HIDDEN,
+        marker_status = C.MARKER.STATUS.HIDDEN,
       } or nil,
     }
   end
@@ -192,7 +192,7 @@ local function find_candidates()
       prospect_info = {
         secret_type = type,
         neighbors_to_check = get_neighbors_to_check(cid, type),
-        marker_status = C.CELL.MARKER_STATUS.HIDDEN,
+        marker_status = C.MARKER.STATUS.HIDDEN,
       },
     }
 
@@ -222,9 +222,11 @@ function M.reload()
     parse_room(rooms_raw:Get(lid))
   end
   for cid, cell in pairs(M.cells) do
-    local pi = cell.prospect_info
-    if cell.category == C.CELL.CATEGORY.SECRET and pi then
-      pi.neighbors_to_check = get_neighbors_to_check(cid, pi.secret_type)
+    if cell.category == C.CELL.CATEGORY.SECRET then
+     local pi = cell.prospect_info
+      if pi then
+        pi.neighbors_to_check = get_neighbors_to_check(cid, pi.secret_type)
+      end
     end
   end
 
