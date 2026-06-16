@@ -40,7 +40,7 @@ M.cells = {}
 
 ---@class LD_Room
 ---@field lid integer
----@field tf_cid integer
+---@field tl_cid integer top-left cid
 ---@field cids integer[]
 ---@field shape RoomShape
 ---@field type RoomType
@@ -81,7 +81,7 @@ local function parse_room(room_desc)
 
   M.rooms[lid] = {
     lid = lid,
-    tf_cid = room_desc.GridIndex,
+    tl_cid = room_desc.GridIndex,
     cids = cids,
     shape = data.Shape,
     type = data.Type,
@@ -91,7 +91,7 @@ end
 
 ---@param cid integer
 ---@return LD_CellNeighbors
-local function get_neighbors(cid)
+function M.get_neighbors(cid)
   local neighbors = {}
   local col = cid % C.MAP.COLS
   if col > 0 then
@@ -115,7 +115,7 @@ end
 ---@return LD_CellNeighbors
 local function get_neighbors_to_check(cid, secret_type)
   local result = {}
-  local neighbors = get_neighbors(cid)
+  local neighbors = M.get_neighbors(cid)
   for dir, n_cid in pairs(neighbors) do
     local n_cell = M.cells[n_cid]
     if n_cell and
@@ -135,7 +135,7 @@ local function candidate_type(cid)
   local normal_count = 0
   local special_count = 0
 
-  local neighbors = get_neighbors(cid)
+  local neighbors = M.get_neighbors(cid)
   for dir, n_cid in pairs(neighbors) do
     local n_cell = M.cells[n_cid]
     if n_cell then
@@ -265,7 +265,7 @@ function M.get_neighbors_to_check(lid)
 
   local cids = room.cids;
   for _, cid in ipairs(cids) do
-    for dir, n_cid in pairs(get_neighbors(cid)) do
+    for dir, n_cid in pairs(M.get_neighbors(cid)) do
       local n_cell = M.cells[n_cid]
       local dir_reverse = C.DIR_REVERSE[dir]
       if n_cell and
@@ -277,6 +277,33 @@ function M.get_neighbors_to_check(lid)
   end
 
   return result
+end
+
+function M.clear_if_found_secret()
+  local rooms = Game():GetLevel():GetRooms()
+
+  for _, secret_type in pairs(C.SECRET_TYPE) do
+    local all_found = true
+    for _, room in pairs(M.rooms) do
+      local desc = rooms:Get(room.lid)
+      if desc and desc.Data.Type == secret_type and (desc.DisplayFlags & 1) == 0 then
+        all_found = false
+      end
+    end
+
+    if all_found then
+      for cid, cell in pairs(M.cells) do
+        if cell.prospect_info and
+           cell.prospect_info.secret_type == secret_type then
+          if cell.category == C.CELL.CATEGORY.CANDIDATE then
+            M.cells[cid] = nil
+          elseif cell.category == C.CELL.CATEGORY.SECRET then
+            cell.prospect_info.marker_status = C.MARKER.STATUS.FOUND
+          end
+        end
+      end
+    end
+  end
 end
 
 

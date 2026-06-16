@@ -26,10 +26,10 @@ local function update_pos_origin(rooms)
   for lid = 0, rooms.Size - 1 do
     local desc = rooms:Get(lid)
     if desc and (desc.DisplayFlags & FLAG_VISIBLE) ~= 0 then
-      local tf_cid = desc.GridIndex
+      local tl_cid = desc.GridIndex
       local offsets = C.CELL.SHAPE_OFFSETS[desc.Data.Shape]
       for _, offset in ipairs(offsets) do
-        local cid = tf_cid + offset
+        local cid = tl_cid + offset
         local r, c = cid // C.MAP.COLS, cid % C.MAP.COLS
         top_row = r < top_row and r or top_row
         right_col = c > right_col and c or right_col
@@ -41,32 +41,6 @@ local function update_pos_origin(rooms)
     center_pos.X * 2 - (right_col + 1) * CELL_W - 5 - Options.HUDOffset * 24,
     -top_row * CELL_H + 5 + Options.HUDOffset * 13
   )
-end
-
----@param rooms CppList_RoomDescriptor
-local function clear_if_found_secret(rooms)
-  for _, secret_type in pairs(C.SECRET_TYPE) do
-    local all_found = true
-    for _, room in pairs(map.rooms) do
-      local desc = rooms:Get(room.lid)
-      if desc and desc.Data.Type == secret_type and (desc.DisplayFlags & 1) == 0 then
-        all_found = false
-      end
-    end
-
-    if all_found then
-      for cid, cell in pairs(map.cells) do
-        if cell.prospect_info and
-           cell.prospect_info.secret_type == secret_type then
-          if cell.category == C.CELL.CATEGORY.CANDIDATE then
-            map.cells[cid] = nil
-          elseif cell.category == C.CELL.CATEGORY.SECRET then
-            cell.prospect_info.marker_status = C.MARKER.STATUS.FOUND
-          end
-        end
-      end
-    end
-  end
 end
 
 ---@param rooms CppList_RoomDescriptor
@@ -114,7 +88,7 @@ end
 function M.refresh()
   local rooms = Game():GetLevel():GetRooms()
   update_pos_origin(rooms)
-  clear_if_found_secret(rooms)
+  map.clear_if_found_secret()
   update_marker(rooms)
 end
 

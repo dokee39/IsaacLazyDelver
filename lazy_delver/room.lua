@@ -6,18 +6,20 @@ local map = require("lazy_delver.map")
 
 local M = {}
 
+local BOMB_RADIUS = 80
+
 ---@param offset integer
 ---@param dir LD_Dir
 ---@param w integer
 ---@return integer
 local function door_gid(offset, dir, w)
-  local ox = (offset % C.MAP.COLS == 0) and 0 or 13
-  local oy = (offset // C.MAP.COLS) * 7
+  local r = (offset // C.MAP.COLS) * 7
+  local c = (offset % C.MAP.COLS == 0) and 0 or 13
 
-  if     dir == C.DIR.LEFT  then return (oy + 4) * w + (ox + 1)
-  elseif dir == C.DIR.RIGHT then return (oy + 4) * w + (ox + 13)
-  elseif dir == C.DIR.UP    then return (oy + 1) * w + (ox + 7)
-  elseif dir == C.DIR.DOWN  then return (oy + 7) * w + (ox + 7)
+  if     dir == C.DIR.LEFT  then return (r + 4) * w + (c + 1)
+  elseif dir == C.DIR.RIGHT then return (r + 4) * w + (c + 13)
+  elseif dir == C.DIR.UP    then return (r + 1) * w + (c + 7)
+  elseif dir == C.DIR.DOWN  then return (r + 7) * w + (c + 7)
   else error("invalid dir: " .. dir) end
 end
 
@@ -65,7 +67,7 @@ end
 
 ---@param room LD_Room
 ---@param neighbors LD_RoomNeighbors
-local function check(room, neighbors)
+local function obstacle_check(room, neighbors)
   local room_obj = Game():GetRoom()
   local w, h = room_obj:GetGridWidth(), room_obj:GetGridHeight()
   local size = room_obj:GetGridSize()
@@ -88,7 +90,7 @@ local function check(room, neighbors)
     if not map.cells[n.cid] then goto continue end
 
     local cid = n.cid - C.CELL.DIR_OFFSETS[n.dir]
-    local d_gid = door_gid(cid - room.tf_cid, n.dir, w)
+    local d_gid = door_gid(cid - room.tl_cid, n.dir, w)
     if visited[d_gid // w][d_gid % w] then
       map.cells[n.cid].prospect_info
         .neighbors_to_check[C.DIR_REVERSE[n.dir]] = nil
@@ -105,7 +107,7 @@ local function check(room, neighbors)
   end
 end
 
-function M.check()
+function M.obstacle_check()
   if map.has_changed() then
     map.reload()
   end
@@ -118,9 +120,48 @@ function M.check()
   log.print_neighbors_to_check(neighbors):info()
 
   local room = map.rooms[lid]
-  check(room, neighbors)
+  obstacle_check(room, neighbors)
 
   log.draw_map(map):info()
+end
+
+---@param effect EntityEffect
+function M.bomb_check(effect)
+  if map.is_ignored() then return end
+
+  local lid = Game():GetLevel():GetCurrentRoomDesc().ListIndex
+  local room = map.rooms[lid]
+  if not room then return end
+
+  local room_obj = Game():GetRoom()
+  local bomb_pos = effect.Position
+  local bomb_gid = room_obj:GetGridIndex(bomb_pos)
+  if bomb_gid < 0 then return end
+
+  for _, cid in pairs(room.cids) do
+    local neighbors = map.get_neighbors(cid)
+    for dir, n_cid in pairs(neighbors) do
+      local n_cell = map.cells[n_cid]
+      if not n_cell or not n_cell.prospect_info then
+        goto continue
+      end
+
+      if n_cell.category == C.CELL.CATEGORY.SECRET then
+        map.clear_if_found_secret()
+        goto continue
+      end
+
+      local d_gid = door_gid(cid - room.tl_cid, dir, room_obj:GetGridWidth())
+      local dist = (bomb_pos - room_obj:GetGridPosition(d_gid)):Length()
+      if dist < BOMB_RADIUS then
+        map.cells[n_cid] = nil
+        return
+      end
+
+      ::continue::
+    end
+  end
+
 end
 
 return M
