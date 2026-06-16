@@ -6,15 +6,22 @@ local log = require("lazy_delver.log")
 ---@class LD_Map
 local M = {}
 
-
----@type boolean
-local ignored = false
 ---@type integer?
 local seed = nil
 ---@type LevelStage?
 local stage = nil
 ---@type StageType?
 local stage_type = nil
+
+local dimension = C.DIMENSION.MAIN
+function M.get_dimension()
+  return dimension
+end
+
+local ignored = false
+function M.is_ignored()
+  return ignored or dimension == C.DIMENSION.OTHER
+end
 
 ---@alias LD_Cid integer cid: `cell` index in [`cells` / grid]
 ---@alias LD_Lid integer lid: [`room` / list] index in `rooms`
@@ -40,6 +47,7 @@ M.cells = {}
 
 ---@class LD_Room
 ---@field lid integer
+---@field mirror_lid integer?
 ---@field tl_cid integer top-left cid
 ---@field cids integer[]
 ---@field shape RoomShape
@@ -48,9 +56,32 @@ M.cells = {}
 M.rooms = {}
 
 ---@param level Level
+local function get_current_dimension(level)
+  local desc = level:GetCurrentRoomDesc()
+  if not desc or not desc.Data then
+    return C.DIMENSION.MAIN
+  end
+  for dim = 1, 2 do
+    local dim_desc = level:GetRoomByIdx(desc.SafeGridIndex, dim)
+    if dim_desc and dim_desc.Data and
+       GetPtrHash(dim_desc) == GetPtrHash(desc) then
+      if dim == 1 and stage == LevelStage.STAGE1_2 and
+         (stage_type == StageType.STAGETYPE_REPENTANCE or
+          stage_type == StageType.STAGETYPE_REPENTANCE_B) then
+        return C.DIMENSION.MIRROR
+      else
+        return C.DIMENSION.OTHER
+      end
+    end
+  end
+  return C.DIMENSION.MAIN
+end
+
+---@param level Level
 local function init(level)
   stage = level:GetStage()
   stage_type = level:GetStageType()
+  dimension = get_current_dimension(level)
   M.cells = {}
   M.rooms = {}
 end
@@ -67,6 +98,13 @@ local function parse_room(room_desc)
   local cids = {}
   for i = 1, #shape_offsets do
     cids[i] = shape_offsets[i] + room_desc.GridIndex
+
+    if M.cells[cids[i]] then
+      M.rooms[lid] = M.rooms[M.cells[cids[i]].lid]
+      M.rooms[lid].mirror_lid = lid
+      return
+    end
+
     M.cells[cids[i]] = {
       cid = cids[i],
       lid = lid,
@@ -201,7 +239,7 @@ local function find_candidates()
 end
 
 
-function M.reload()
+local function reload()
   local level = Game():GetLevel()
   init(level)
 
@@ -237,13 +275,7 @@ function M.reload()
   log.draw_map(M):info()
 end
 
----@return boolean
-function M.is_ignored()
-  return ignored
-end
-
----@return boolean
-function M.has_changed()
+function M.refresh()
   local current_seed = Game():GetSeeds():GetStartSeed()
   if seed ~= current_seed then
     seed = current_seed
@@ -251,10 +283,13 @@ function M.has_changed()
   end
 
   local level = Game():GetLevel()
-  return
-    level:GetStage() ~= stage or
-    level:GetStageType() ~= stage_type
+  if level:GetStage() ~= stage or level:GetStageType() ~= stage_type then
+    reload()
+  end
+
+  dimension = get_current_dimension(level)
 end
+
 
 ---@param lid LD_Lid
 ---@return LD_RoomNeighbors

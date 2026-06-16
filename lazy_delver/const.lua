@@ -4,6 +4,13 @@ local M = {}
 
 -- GENERAL
 
+---@enum LD_Dimension
+M.DIMENSION = {
+  MAIN   = 0,
+  MIRROR = 1,
+  OTHER  = 2,
+}
+
 ---@enum LD_Dir
 M.DIR = {
   LEFT  = DoorSlot.LEFT0,

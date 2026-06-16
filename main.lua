@@ -1,8 +1,11 @@
 local mod = RegisterMod("Lazy Delver", 1)
+
+local map = require("lazy_delver.map")
 local room = require("lazy_delver.room")
 local render = require("lazy_delver.render")
 
 mod:AddCallback(ModCallbacks.MC_POST_NEW_ROOM, function()
+    map.refresh()
     room.obstacle_check()
     render.refresh()
 end)

@@ -5,6 +5,8 @@ local map = require("lazy_delver.map")
 
 local M = {}
 
+local dirty = false
+
 local TAB_HOLD_THRESHOLD = 3
 local TAB_HOLD_MAX = 9
 local tab_hold_cnt = -TAB_HOLD_THRESHOLD
@@ -19,10 +21,12 @@ marker_sprite:Load("gfx/lazy_delver/marker.anm2", true)
 marker_sprite:SetFrame(marker_sprite:GetDefaultAnimation(), 1)
 
 local pos_origin = Vector.Zero
+local mirror_offset = 0
 
----@param rooms CppList_RoomDescriptor
-local function update_pos_origin(rooms)
-  local top_row, right_col = 13, -1
+local function update_pos_origin()
+  local rooms = Game():GetLevel():GetRooms()
+  local top_row, left_col, right_col = 13, 13, -1
+
   for lid = 0, rooms.Size - 1 do
     local desc = rooms:Get(lid)
     if desc and (desc.DisplayFlags & FLAG_VISIBLE) ~= 0 then
@@ -32,6 +36,7 @@ local function update_pos_origin(rooms)
         local cid = tl_cid + offset
         local r, c = cid // C.MAP.COLS, cid % C.MAP.COLS
         top_row = r < top_row and r or top_row
+        left_col = c < left_col and c or left_col
         right_col = c > right_col and c or right_col
       end
     end
@@ -41,10 +46,12 @@ local function update_pos_origin(rooms)
     center_pos.X * 2 - (right_col + 1) * CELL_W - 5 - Options.HUDOffset * 24,
     -top_row * CELL_H + 5 + Options.HUDOffset * 13
   )
+  mirror_offset = left_col + right_col
 end
 
----@param rooms CppList_RoomDescriptor
-local function update_marker(rooms)
+local function update_marker()
+  local rooms = Game():GetLevel():GetRooms()
+
   for _, cell in pairs(map.cells) do
     local pi = cell.prospect_info
     if not pi or pi.marker_status == C.MARKER.STATUS.FOUND then
@@ -55,7 +62,18 @@ local function update_marker(rooms)
     local all_checked = true
     for _, n_cid in pairs(pi.neighbors_to_check) do
       all_checked = false
-      local desc = rooms:Get(map.cells[n_cid].lid)
+
+      local lid
+      if map.get_dimension() == C.DIMENSION.MIRROR then
+        lid = map.rooms[map.cells[n_cid].lid].mirror_lid
+      else
+        lid = map.cells[n_cid].lid
+      end
+      if not lid then
+        error("cell " .. n_cid .. " should have a mirror lid")
+      end
+
+      local desc = rooms:Get(lid)
       if desc and (desc.DisplayFlags & FLAG_VISIBLE) == 0 then
         all_visible = false
         break
@@ -76,6 +94,8 @@ end
 
 
 function M.tab_hold_check()
+  if map.is_ignored() then return end
+
   local controller_id = Isaac.GetPlayer(0).ControllerIndex
   if Input.IsActionPressed(ButtonAction.ACTION_MAP, controller_id) then
     tab_hold_cnt = math.min(tab_hold_cnt + 1, TAB_HOLD_MAX)
@@ -86,21 +106,31 @@ end
 
 
 function M.refresh()
-  local rooms = Game():GetLevel():GetRooms()
-  update_pos_origin(rooms)
-  map.clear_if_found_secret()
-  update_marker(rooms)
+  if map.is_ignored() then return end
+  dirty = true
 end
 
 function M.render()
   if map.is_ignored() then return end
   if tab_hold_cnt <= 0 then return end
 
+  if dirty then
+    update_pos_origin()
+    map.clear_if_found_secret()
+    update_marker()
+    dirty = false
+  end
+
+  local is_mirror = map.get_dimension() == C.DIMENSION.MIRROR
+
   for cid, cell in pairs(map.cells) do
     local pi = cell.prospect_info
     if pi and pi.marker_status ~= C.MARKER.STATUS.HIDDEN and
               pi.marker_status ~= C.MARKER.STATUS.FOUND then
       local r, c = cid // C.MAP.COLS, cid % C.MAP.COLS
+      if is_mirror then
+        c = mirror_offset - c
+      end
       local pos = Vector(pos_origin.X + c * CELL_W + 8,
                          pos_origin.Y + r * CELL_H + 7)
       local colors = C.MARKER.COLORS[pi.secret_type]

@@ -108,9 +108,6 @@ local function obstacle_check(room, neighbors)
 end
 
 function M.obstacle_check()
-  if map.has_changed() then
-    map.reload()
-  end
   if map.is_ignored() then return end
 
   local lid = Game():GetLevel():GetCurrentRoomDesc().ListIndex
