@@ -2,26 +2,10 @@
 
 local C = require("lazy_delver.const")
 local log = require("lazy_delver.log")
+local state = require("lazy_delver.state")
 
 ---@class LD_Map
 local M = {}
-
----@type integer?
-local seed = nil
----@type LevelStage?
-local stage = nil
----@type StageType?
-local stage_type = nil
-
-local dimension = C.DIMENSION.MAIN
-function M.get_dimension()
-  return dimension
-end
-
-local ignored = false
-function M.is_ignored()
-  return ignored or dimension == C.DIMENSION.OTHER
-end
 
 ---@alias LD_Cid integer cid: `cell` index in [`cells` / grid]
 ---@alias LD_Lid integer lid: [`room` / list] index in `rooms`
@@ -54,48 +38,6 @@ M.cells = {}
 ---@field type RoomType
 ---@type table<LD_Lid, LD_Room>
 M.rooms = {}
-
-M.special_items = {
-  [CollectibleType.COLLECTIBLE_BLUE_MAP]      = false,
-  [CollectibleType.COLLECTIBLE_XRAY_VISION]   = false,
-  [CollectibleType.COLLECTIBLE_MIND]          = false,
-  [CollectibleType.COLLECTIBLE_DOG_TOOTH]     = false,
-  [CollectibleType.COLLECTIBLE_YO_LISTEN]     = false,
-  [CollectibleType.COLLECTIBLE_SPELUNKER_HAT] = false,
-}
-
----@param level Level
-local function get_current_dimension(level)
-  local desc = level:GetCurrentRoomDesc()
-  if not desc or not desc.Data then
-    return C.DIMENSION.MAIN
-  end
-  for dim = 1, 2 do
-    local dim_desc = level:GetRoomByIdx(desc.SafeGridIndex, dim)
-    if dim_desc and dim_desc.Data and
-       GetPtrHash(dim_desc) == GetPtrHash(desc) then
-      if dim == 1 and stage == LevelStage.STAGE1_2 and
-         (stage_type == StageType.STAGETYPE_REPENTANCE or
-          stage_type == StageType.STAGETYPE_REPENTANCE_B) then
-        return C.DIMENSION.MIRROR
-      else
-        return C.DIMENSION.OTHER
-      end
-    end
-  end
-  return C.DIMENSION.MAIN
-end
-
----@param level Level
-local function init(level)
-  seed = Game():GetSeeds():GetStartSeed()
-  stage = level:GetStage()
-  stage_type = level:GetStageType()
-  dimension = get_current_dimension(level)
-  M.cells = {}
-  M.rooms = {}
-  for type, _ in pairs(M.special_items) do M.special_items[type] = false end
-end
 
 
 ---@param room_desc RoomDescriptor
@@ -250,23 +192,14 @@ local function find_candidates()
 end
 
 
-local function reload()
+function M.reload()
   local level = Game():GetLevel()
-  init(level)
+  state.update(level)
 
-  log.info("<=== New Level: " .. C.STAGE_NAME[stage][stage_type] .. " ===>")
-  if level:IsAscent() or
-     level:GetStage() == LevelStage.STAGE8 or
-     Game():IsGreedMode() then
-    ignored = true
-    log.info("This level was ignored.")
-    return
-  else
-    ignored = false
-  end
+  M.cells = {}
+  M.rooms = {}
 
   local rooms_raw = level:GetRooms()
-
   for lid = 0, #rooms_raw - 1 do
     parse_room(rooms_raw:Get(lid))
   end
@@ -284,19 +217,8 @@ local function reload()
   log.info("Map loading complete!\n")
   log.print_map(M):info()
   log.draw_map(M):info()
-end
 
-function M.refresh()
-  if Game():GetSeeds():GetStartSeed() ~= seed then
-    reload()
-  end
-
-  local level = Game():GetLevel()
-  if level:GetStage() ~= stage or level:GetStageType() ~= stage_type then
-    reload()
-  end
-
-  dimension = get_current_dimension(level)
+  state.done()
 end
 
 

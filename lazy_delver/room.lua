@@ -1,6 +1,7 @@
 ---@module "lazy_delver.room"
 
 local C = require("lazy_delver.const")
+local state = require("lazy_delver.state")
 local log = require("lazy_delver.log")
 local map = require("lazy_delver.map")
 
@@ -108,7 +109,8 @@ local function obstacle_check(room, neighbors)
 end
 
 function M.obstacle_check()
-  if map.is_ignored() then return end
+  if state.has_changed() then map.reload() end
+  if state.is_ignored() then return end
 
   local lid = Game():GetLevel():GetCurrentRoomDesc().ListIndex
   log.info("=== Entered New Room ===")
@@ -127,7 +129,7 @@ end
 
 ---@param effect EntityEffect
 function M.bomb_check(effect)
-  if map.is_ignored() then return end
+  if state.is_ignored() then return end
 
   local lid = Game():GetLevel():GetCurrentRoomDesc().ListIndex
   local room = map.rooms[lid]

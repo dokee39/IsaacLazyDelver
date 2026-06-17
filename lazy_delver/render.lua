@@ -1,6 +1,7 @@
 ---@module "lazy_delver.render"
 
 local C = require("lazy_delver.const")
+local state = require("lazy_delver.state")
 local map = require("lazy_delver.map")
 
 local M = {}
@@ -62,7 +63,7 @@ local function update_marker()
       all_checked = false
 
       local lid
-      if map.get_dimension() == C.DIMENSION.MIRROR then
+      if state.get_dimension() == C.DIMENSION.MIRROR then
         lid = map.rooms[map.cells[n_cid].lid].mirror_lid
       else
         lid = map.cells[n_cid].lid
@@ -92,7 +93,7 @@ end
 
 
 function M.tab_hold_check()
-  if map.is_ignored() then return end
+  if state.is_ignored() then return end
 
   local controller_id = Isaac.GetPlayer(0).ControllerIndex
   if Input.IsActionPressed(ButtonAction.ACTION_MAP, controller_id) then
@@ -104,14 +105,9 @@ end
 
 
 local function refresh()
-  local player = Isaac.GetPlayer()
-  local can_see = player:HasCollectible(CollectibleType.COLLECTIBLE_DOG_TOOTH)
-                or player:HasCollectible(CollectibleType.COLLECTIBLE_YO_LISTEN)
-                or player:HasCollectible(CollectibleType.COLLECTIBLE_SPELUNKER_HAT)
-                or Game():GetLevel():GetCanSeeEverything()
   update_pos_origin()
   map.clear_if_found_secret()
-  if can_see then
+  if state.can_see_entrance() then
     local lid = Game():GetLevel():GetCurrentRoomDesc().ListIndex
     map.clear_neighbors_to_check(lid)
   end
@@ -120,23 +116,20 @@ local function refresh()
 end
 
 function M.refresh()
-  if map.is_ignored() then return end
+  if state.is_ignored() then return end
   need_refresh = true
 end
 
 function M.render()
-  if map.is_ignored() then return end
+  if state.is_ignored() then return end
 
-  local curses = Game():GetLevel():GetCurses()
-  if curses & LevelCurse.CURSE_OF_THE_LOST ~= 0 then return end
-  local current_desc = Game():GetLevel():GetCurrentRoomDesc()
-  if current_desc.GridIndex < 0 then return end
+  if state.is_lost_cursed() or state.is_off_grid() then return end
 
   if tab_hold_cnt <= 0 then return end
 
   if need_refresh then refresh() end
 
-  local is_mirror = map.get_dimension() == C.DIMENSION.MIRROR
+  local is_mirror = state.get_dimension() == C.DIMENSION.MIRROR
 
   for cid, cell in pairs(map.cells) do
     local pi = cell.prospect_info
