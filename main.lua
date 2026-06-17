@@ -24,7 +24,7 @@ for _, item in ipairs(state.items.active) do
   mod:AddCallback(item.mc, function()
     if item.clear then
       local lid = Game():GetLevel():GetCurrentRoomDesc().ListIndex
-      map.clear_neighbors_to_check(lid)
+      map.clear_fake_neighbors(lid)
     end
     render.refresh()
   end, item.type)

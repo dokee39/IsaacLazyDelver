@@ -52,14 +52,14 @@ local function update_marker()
   local rooms = Game():GetLevel():GetRooms()
 
   for _, cell in pairs(map.cells) do
-    local pi = cell.prospect_info
-    if not pi or pi.marker_status == C.MARKER.STATUS.FOUND then
+    local info = cell.candidate_info
+    if not info or info.marker_status == C.MARKER.STATUS.FOUND then
       goto continue
     end
 
     local all_visible = true
     local all_checked = true
-    for _, n_cid in pairs(pi.neighbors_to_check) do
+    for _, n_cid in pairs(info.neighbors_to_check) do
       all_checked = false
 
       local lid
@@ -80,11 +80,11 @@ local function update_marker()
     end
 
     if not all_visible then
-      pi.marker_status = C.MARKER.STATUS.HIDDEN
+      info.marker_status = C.MARKER.STATUS.HIDDEN
     elseif not all_checked then
-      pi.marker_status = C.MARKER.STATUS.DIM
+      info.marker_status = C.MARKER.STATUS.DIM
     else
-      pi.marker_status = C.MARKER.STATUS.BRIGHT
+      info.marker_status = C.MARKER.STATUS.BRIGHT
     end
 
     ::continue::
@@ -106,10 +106,10 @@ end
 
 local function refresh()
   update_pos_origin()
-  map.clear_if_found_secret()
+  map.clear_fake_if_all_found()
   if state.can_see_entrance() then
     local lid = Game():GetLevel():GetCurrentRoomDesc().ListIndex
-    map.clear_neighbors_to_check(lid)
+    map.clear_fake_neighbors(lid)
   end
   update_marker()
   need_refresh = false
@@ -132,17 +132,17 @@ function M.render()
   local is_mirror = state.get_dimension() == C.DIMENSION.MIRROR
 
   for cid, cell in pairs(map.cells) do
-    local pi = cell.prospect_info
-    if pi and pi.marker_status ~= C.MARKER.STATUS.HIDDEN and
-              pi.marker_status ~= C.MARKER.STATUS.FOUND then
+    local info = cell.candidate_info
+    if info and info.marker_status ~= C.MARKER.STATUS.HIDDEN and
+              info.marker_status ~= C.MARKER.STATUS.FOUND then
       local r, c = cid // C.MAP.COLS, cid % C.MAP.COLS
       if is_mirror then
         c = mirror_offset - c
       end
       local pos = Vector(pos_origin.X + c * CELL_W + 8,
                          pos_origin.Y + r * CELL_H + 7)
-      local colors = C.MARKER.COLORS[pi.secret_type]
-      local alpha = C.MARKER.ALPHA[pi.marker_status]
+      local colors = C.MARKER.COLORS[info.secret_type]
+      local alpha = C.MARKER.ALPHA[info.marker_status]
       marker_sprite.Color = Color(
         colors[1], colors[2], colors[3],
         alpha * (tab_hold_cnt / TAB_HOLD_MAX),

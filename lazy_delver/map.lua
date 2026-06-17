@@ -16,7 +16,7 @@ local M = {}
 ---@alias LD_CellNeighbors table<LD_Dir, LD_Cid>
 ---@alias LD_RoomNeighbors LD_CellNeighbor[]
 
----@class LD_ProspectInfo
+---@class LD_CandidateInfo
 ---@field secret_type LD_SecretType
 ---@field neighbors_to_check LD_CellNeighbors
 ---@field marker_status LD_MarkerStatus
@@ -25,7 +25,7 @@ local M = {}
 ---@field cid LD_Cid
 ---@field lid LD_Lid?
 ---@field category LD_CellCategory?
----@field prospect_info LD_ProspectInfo?
+---@field candidate_info LD_CandidateInfo?
 ---@type table<LD_Cid, LD_Cell>
 M.cells = {}
 
@@ -62,7 +62,7 @@ local function parse_room(room_desc)
       cid = cids[i],
       lid = lid,
       category = category,
-      prospect_info = secret_type and {
+      candidate_info = secret_type and {
         secret_type = secret_type,
         neighbors_to_check = {},
         marker_status = C.MARKER.STATUS.HIDDEN,
@@ -122,7 +122,7 @@ end
 
 ---@param cid LD_Cid
 ---@return LD_SecretType?
-local function candidate_type(cid)
+local function fake_type(cid)
   local normal_count = 0
   local special_count = 0
 
@@ -165,13 +165,13 @@ local function candidate_type(cid)
   return nil
 end
 
-local function find_candidates()
+local function find_fakes()
   for cid = 0, C.MAP.SIZE - 1 do
     if M.cells[cid] then
       goto continue
     end
 
-    local type = candidate_type(cid)
+    local type = fake_type(cid)
     if type == nil then
       goto continue
     end
@@ -179,8 +179,8 @@ local function find_candidates()
     M.cells[cid] = {
       cid = cid,
       lid = nil,
-      category = C.CELL.CATEGORY.CANDIDATE,
-      prospect_info = {
+      category = C.CELL.CATEGORY.FAKE,
+      candidate_info = {
         secret_type = type,
         neighbors_to_check = get_neighbors_to_check(cid, type),
         marker_status = C.MARKER.STATUS.HIDDEN,
@@ -205,14 +205,14 @@ function M.reload()
   end
   for cid, cell in pairs(M.cells) do
     if cell.category == C.CELL.CATEGORY.SECRET then
-     local pi = cell.prospect_info
-      if pi then
-        pi.neighbors_to_check = get_neighbors_to_check(cid, pi.secret_type)
+     local info = cell.candidate_info
+      if info then
+        info.neighbors_to_check = get_neighbors_to_check(cid, info.secret_type)
       end
     end
   end
 
-  find_candidates()
+  find_fakes()
 
   log.info("Map loading complete!\n")
   log.print_map(M):info()
@@ -224,7 +224,7 @@ end
 
 ---@param lid LD_Lid
 ---@return LD_RoomNeighbors
-function M.get_neighbors_to_check(lid)
+function M.get_candidate_neighbors(lid)
   local result = {}
   local room = M.rooms[lid]
   if not room then return result end
@@ -235,8 +235,8 @@ function M.get_neighbors_to_check(lid)
       local n_cell = M.cells[n_cid]
       local dir_reverse = C.DIR_REVERSE[dir]
       if n_cell and
-         n_cell.prospect_info and
-         n_cell.prospect_info.neighbors_to_check[dir_reverse] == cid then
+         n_cell.candidate_info and
+         n_cell.candidate_info.neighbors_to_check[dir_reverse] == cid then
         result[#result + 1] = { dir = dir, cid = n_cid }
       end
     end
@@ -246,7 +246,7 @@ function M.get_neighbors_to_check(lid)
 end
 
 ---@param lid LD_Lid
-function M.clear_neighbors_to_check(lid)
+function M.clear_fake_neighbors(lid)
   local room = M.rooms[lid]
   if not room then return end
 
@@ -255,14 +255,14 @@ function M.clear_neighbors_to_check(lid)
 
     for _, n_cid in pairs(neighbors) do
       local n_cell = M.cells[n_cid]
-      if n_cell and n_cell.category == C.CELL.CATEGORY.CANDIDATE then
+      if n_cell and n_cell.category == C.CELL.CATEGORY.FAKE then
         M.cells[n_cid] = nil
       end
     end
   end
 end
 
-function M.clear_if_found_secret()
+function M.clear_fake_if_all_found()
   local rooms = Game():GetLevel():GetRooms()
 
   for _, secret_type in pairs(C.SECRET_TYPE) do
@@ -276,12 +276,12 @@ function M.clear_if_found_secret()
 
     if all_found then
       for cid, cell in pairs(M.cells) do
-        if cell.prospect_info and
-           cell.prospect_info.secret_type == secret_type then
-          if cell.category == C.CELL.CATEGORY.CANDIDATE then
+        if cell.candidate_info and
+           cell.candidate_info.secret_type == secret_type then
+          if cell.category == C.CELL.CATEGORY.FAKE then
             M.cells[cid] = nil
           elseif cell.category == C.CELL.CATEGORY.SECRET then
-            cell.prospect_info.marker_status = C.MARKER.STATUS.FOUND
+            cell.candidate_info.marker_status = C.MARKER.STATUS.FOUND
           end
         end
       end

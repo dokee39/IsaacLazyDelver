@@ -24,6 +24,24 @@ local function door_gid(offset, dir, w)
   else error("invalid dir: " .. dir) end
 end
 
+---@param dir LD_Dir
+---@param offset integer
+---@return DoorSlot
+local function dir_to_doorslot(dir, offset)
+  local row = offset // C.MAP.COLS
+  if dir == C.DIR.LEFT then
+    return row == 0 and DoorSlot.LEFT0 or DoorSlot.LEFT1
+  elseif dir == C.DIR.RIGHT then
+    return row == 0 and DoorSlot.RIGHT0 or DoorSlot.RIGHT1
+  elseif dir == C.DIR.UP then
+    local col = offset % C.MAP.COLS
+    return col == 0 and DoorSlot.UP0 or DoorSlot.UP1
+  elseif dir == C.DIR.DOWN then
+    local col = offset % C.MAP.COLS
+    return col == 0 and DoorSlot.DOWN0 or DoorSlot.DOWN1
+  end
+end
+
 ---@param room_obj Room
 ---@return { w: integer, h: integer, [integer]: { [integer]: boolean } }
 local function make_grid(room_obj)
@@ -92,16 +110,19 @@ local function obstacle_check(room, neighbors)
 
     local cid = n.cid - C.CELL.DIR_OFFSETS[n.dir]
     local d_gid = door_gid(cid - room.tl_cid, n.dir, w)
-    if visited[d_gid // w][d_gid % w] then
-      map.cells[n.cid].prospect_info
+    local slot = dir_to_doorslot(n.dir, cid - room.tl_cid)
+
+    if visited[d_gid // w][d_gid % w] and room_obj:IsDoorSlotAllowed(slot) then
+      map.cells[n.cid].candidate_info
         .neighbors_to_check[C.DIR_REVERSE[n.dir]] = nil
+      goto continue
+    end
+
+    if map.cells[n.cid].category == C.CELL.CATEGORY.FAKE then
+      map.cells[n.cid] = nil
     else
-      if map.cells[n.cid].category == C.CELL.CATEGORY.CANDIDATE then
-        map.cells[n.cid] = nil
-      else
-        log.error("Try to remove a non-candidate room: ")
-        log.print_room(map.cells[n.cid].lid, map):error()
-      end
+      log.error("Try to remove a real secret room: ")
+      log.print_room(map.cells[n.cid].lid, map):error()
     end
 
     ::continue::
@@ -121,7 +142,7 @@ function M.obstacle_check()
     return
   end
 
-  local neighbors = map.get_neighbors_to_check(lid)
+  local neighbors = map.get_candidate_neighbors(lid)
   obstacle_check(room, neighbors)
 
   log.print_room(lid, map):info()
@@ -144,12 +165,12 @@ function M.bomb_check(effect)
     local neighbors = map.get_neighbors(cid)
     for dir, n_cid in pairs(neighbors) do
       local n_cell = map.cells[n_cid]
-      if not n_cell or not n_cell.prospect_info then
+      if not n_cell or not n_cell.candidate_info then
         goto continue
       end
 
       if n_cell.category == C.CELL.CATEGORY.SECRET then
-        map.clear_if_found_secret()
+        map.clear_fake_if_all_found()
         goto continue
       end
 

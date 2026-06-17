@@ -162,11 +162,11 @@ M.CELL.CATEGORY = {
   SPECIAL = 2,
   BOSS = 3,
   SECRET = 4,
-  CANDIDATE = 5,
+  FAKE = 5,
 }
 
 ---@type table<LD_SecretType, table<boolean, string>>
-M.CELL.CANDIDATE_SYM = {
+M.CELL.FAKE_SYM = {
   [M.SECRET_TYPE.REGULAR] = { [true] = " R ", [false] = " r " },
   [M.SECRET_TYPE.SUPER]   = { [true] = " S ", [false] = " s " },
   [M.SECRET_TYPE.ULTRA]   = { [true] = " U ", [false] = " u " },
