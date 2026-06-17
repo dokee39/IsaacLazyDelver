@@ -55,6 +55,15 @@ M.cells = {}
 ---@type table<LD_Lid, LD_Room>
 M.rooms = {}
 
+M.special_items = {
+  [CollectibleType.COLLECTIBLE_BLUE_MAP]      = false,
+  [CollectibleType.COLLECTIBLE_XRAY_VISION]   = false,
+  [CollectibleType.COLLECTIBLE_MIND]          = false,
+  [CollectibleType.COLLECTIBLE_DOG_TOOTH]     = false,
+  [CollectibleType.COLLECTIBLE_YO_LISTEN]     = false,
+  [CollectibleType.COLLECTIBLE_SPELUNKER_HAT] = false,
+}
+
 ---@param level Level
 local function get_current_dimension(level)
   local desc = level:GetCurrentRoomDesc()
@@ -79,11 +88,13 @@ end
 
 ---@param level Level
 local function init(level)
+  seed = Game():GetSeeds():GetStartSeed()
   stage = level:GetStage()
   stage_type = level:GetStageType()
   dimension = get_current_dimension(level)
   M.cells = {}
   M.rooms = {}
+  for type, _ in pairs(M.special_items) do M.special_items[type] = false end
 end
 
 
@@ -276,10 +287,8 @@ local function reload()
 end
 
 function M.refresh()
-  local current_seed = Game():GetSeeds():GetStartSeed()
-  if seed ~= current_seed then
-    seed = current_seed
-    return true
+  if Game():GetSeeds():GetStartSeed() ~= seed then
+    reload()
   end
 
   local level = Game():GetLevel()
@@ -314,6 +323,23 @@ function M.get_neighbors_to_check(lid)
   return result
 end
 
+---@param lid LD_Lid
+function M.clear_neighbors_to_check(lid)
+  local room = M.rooms[lid]
+  if not room then return end
+
+  for _, cid in ipairs(room.cids) do
+    local neighbors = M.get_neighbors(cid)
+
+    for _, n_cid in pairs(neighbors) do
+      local n_cell = M.cells[n_cid]
+      if n_cell and n_cell.category == C.CELL.CATEGORY.CANDIDATE then
+        M.cells[n_cid] = nil
+      end
+    end
+  end
+end
+
 function M.clear_if_found_secret()
   local rooms = Game():GetLevel():GetRooms()
 
@@ -321,7 +347,7 @@ function M.clear_if_found_secret()
     local all_found = true
     for _, room in pairs(M.rooms) do
       local desc = rooms:Get(room.lid)
-      if desc and desc.Data.Type == secret_type and (desc.DisplayFlags & 1) == 0 then
+      if desc and desc.Data.Type == secret_type and desc.DisplayFlags == 0 then
         all_found = false
       end
     end

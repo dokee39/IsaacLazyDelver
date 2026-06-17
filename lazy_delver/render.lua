@@ -5,7 +5,7 @@ local map = require("lazy_delver.map")
 
 local M = {}
 
-local dirty = false
+local need_refresh = false
 
 local TAB_HOLD_THRESHOLD = 3
 local TAB_HOLD_MAX = 9
@@ -13,8 +13,6 @@ local tab_hold_cnt = -TAB_HOLD_THRESHOLD
 
 local CELL_W = 17
 local CELL_H = 15
-
-local FLAG_VISIBLE = 1
 
 local marker_sprite = Sprite()
 marker_sprite:Load("gfx/lazy_delver/marker.anm2", true)
@@ -29,7 +27,7 @@ local function update_pos_origin()
 
   for lid = 0, rooms.Size - 1 do
     local desc = rooms:Get(lid)
-    if desc and (desc.DisplayFlags & FLAG_VISIBLE) ~= 0 then
+    if desc and desc.DisplayFlags ~= 0 then
       local tl_cid = desc.GridIndex
       local offsets = C.CELL.SHAPE_OFFSETS[desc.Data.Shape]
       for _, offset in ipairs(offsets) do
@@ -74,7 +72,7 @@ local function update_marker()
       end
 
       local desc = rooms:Get(lid)
-      if desc and (desc.DisplayFlags & FLAG_VISIBLE) == 0 then
+      if desc and desc.DisplayFlags == 0 then
         all_visible = false
         break
       end
@@ -105,21 +103,38 @@ function M.tab_hold_check()
 end
 
 
+local function refresh()
+  local player = Isaac.GetPlayer()
+  local can_see = player:HasCollectible(CollectibleType.COLLECTIBLE_DOG_TOOTH)
+                or player:HasCollectible(CollectibleType.COLLECTIBLE_YO_LISTEN)
+                or player:HasCollectible(CollectibleType.COLLECTIBLE_SPELUNKER_HAT)
+                or Game():GetLevel():GetCanSeeEverything()
+  update_pos_origin()
+  map.clear_if_found_secret()
+  if can_see then
+    local lid = Game():GetLevel():GetCurrentRoomDesc().ListIndex
+    map.clear_neighbors_to_check(lid)
+  end
+  update_marker()
+  need_refresh = false
+end
+
 function M.refresh()
   if map.is_ignored() then return end
-  dirty = true
+  need_refresh = true
 end
 
 function M.render()
   if map.is_ignored() then return end
+
+  local curses = Game():GetLevel():GetCurses()
+  if curses & LevelCurse.CURSE_OF_THE_LOST ~= 0 then return end
+  local current_desc = Game():GetLevel():GetCurrentRoomDesc()
+  if current_desc.GridIndex < 0 then return end
+
   if tab_hold_cnt <= 0 then return end
 
-  if dirty then
-    update_pos_origin()
-    map.clear_if_found_secret()
-    update_marker()
-    dirty = false
-  end
+  if need_refresh then refresh() end
 
   local is_mirror = map.get_dimension() == C.DIMENSION.MIRROR
 

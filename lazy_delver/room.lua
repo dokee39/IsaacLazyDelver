@@ -111,15 +111,18 @@ function M.obstacle_check()
   if map.is_ignored() then return end
 
   local lid = Game():GetLevel():GetCurrentRoomDesc().ListIndex
-  local neighbors = map.get_neighbors_to_check(lid)
   log.info("=== Entered New Room ===")
-  log.print_room(lid, map):info()
-  log.print_neighbors_to_check(neighbors):info()
-
   local room = map.rooms[lid]
+  if not room then
+    log.info("list id: " .. lid)
+    log.info("")
+    return
+  end
+
+  local neighbors = map.get_neighbors_to_check(lid)
   obstacle_check(room, neighbors)
 
-  log.draw_map(map):info()
+  log.print_room(lid, map):info()
 end
 
 ---@param effect EntityEffect
