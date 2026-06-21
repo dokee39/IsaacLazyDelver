@@ -5,14 +5,6 @@ local C = require("lazy_delver.const")
 local M = {}
 
 
----@type table<LD_Dir, string>
-local DIR_TO_STRING = {
-  [C.DIR.LEFT]  = "left",
-  [C.DIR.UP]    = "up",
-  [C.DIR.RIGHT] = "right",
-  [C.DIR.DOWN]  = "down",
-}
-
 ---@type table<LD_SecretType, table<boolean, string>>
 local FAKE_SYM = {
   [C.SECRET_TYPE.REGULAR] = { [true] = " R ", [false] = " r " },
@@ -160,18 +152,21 @@ end
 ---@return string
 local function to_sym(cid, map)
   local cell = map.cells[cid]
-  if not cell then
+  local cand = map.candidates[cid]
+  if not cell and not cand then
     return " . "
   end
 
-  if cell.category == C.CELL.CATEGORY.FAKE then
-    local cnt = 0
-    for _ in pairs(cell.candidate_info.neighbors_to_check) do
-      cnt = cnt + 1
+  if cand then
+    if cand.lid then
+      return SECRET_SYM[cand.secret_type]
+    else
+      local checked = true
+      for _, entry in pairs(cand.entries) do
+        checked = checked and entry.checked
+      end
+      return FAKE_SYM[cand.secret_type][checked]
     end
-    return FAKE_SYM[cell.candidate_info.secret_type][cnt == 0]
-  elseif cell.category == C.CELL.CATEGORY.SECRET then
-    return SECRET_SYM[cell.candidate_info.secret_type]
   end
 
   local offsets = C.CELL.SHAPE_OFFSETS[map.rooms[cell.lid].shape]
@@ -210,17 +205,6 @@ function M.print_room(lid, map)
   return Log:new({ line })
 end
 
----@param neighbors LD_RoomNeighbors
----@return LD_Log
-function M.print_candidate_neighbors(neighbors)
-  local lines = {}
-  for _, n in pairs(neighbors) do
-    lines[#lines + 1] = "need check " .. to_point(n.cid) ..
-                        " (" .. C.DIR_TO_STRING[n.dir] .. ")"
-  end
-  return Log:new(lines)
-end
-
 ---@param map LD_Map
 ---@return LD_Log
 function M.print_map(map)
@@ -234,8 +218,8 @@ function M.print_map(map)
     end
   end
 
-  for cid, cell in pairs(map.cells) do
-    if cell.category == C.CELL.CATEGORY.FAKE then
+  for cid, cand in pairs(map.candidates) do
+    if not cand.lid then
       lines[#lines + 1] =
         to_sym(cid, map) .. " candidate in cell " .. to_point(cid)
     end

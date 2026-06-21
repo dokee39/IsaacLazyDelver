@@ -3,6 +3,7 @@
 local C = require("lazy_delver.const")
 local log = require("lazy_delver.log")
 local state = require("lazy_delver.state")
+local geometry = require("lazy_delver.geometry")
 
 ---@class LD_Map
 local M = {}
@@ -10,24 +11,30 @@ local M = {}
 ---@alias LD_Cid integer cid: `cell` index in [`cells` / grid]
 ---@alias LD_Lid integer lid: [`room` / list] index in `rooms`
 
----@class LD_CellNeighbor
----@field dir LD_Dir
----@field cid LD_Cid
----@alias LD_CellNeighbors table<LD_Dir, LD_Cid>
----@alias LD_RoomNeighbors LD_CellNeighbor[]
-
----@class LD_CandidateInfo
----@field secret_type LD_SecretType
----@field neighbors_to_check LD_CellNeighbors
----@field marker_status LD_MarkerStatus
-
 ---@class LD_Cell
 ---@field cid LD_Cid
----@field lid LD_Lid?
----@field category LD_CellCategory?
----@field candidate_info LD_CandidateInfo?
+---@field lid LD_Lid
+---@field category LD_CellCategory
 ---@type table<LD_Cid, LD_Cell>
 M.cells = {}
+
+---@class LD_Entry
+---@field source_lid LD_Lid
+---@field source_cid LD_Cid
+---@field via_cid LD_Cid?  -- ULTRA only; nil for REGULAR/SUPER
+---@field doorslot DoorSlot
+---@field checked boolean
+---@alias LD_Entries table<LD_Dir, LD_Entry>
+
+---@class LD_Candidate
+---@field cid LD_Cid
+---@field secret_type LD_SecretType
+---@field lid LD_Lid?  -- real SECRET ListIndex; nil for fake candidates
+---@field marker_status LD_MarkerStatus
+---@field entries LD_Entries
+
+---@type table<LD_Cid, LD_Candidate>
+M.candidates = {}
 
 ---@class LD_Room
 ---@field lid integer
@@ -46,7 +53,6 @@ local function parse_room(room_desc)
   local lid = room_desc.ListIndex
   local shape_offsets = C.CELL.SHAPE_OFFSETS[data.Shape]
   local category = C.CELL.ROOM_TYPE_TO_CATEGORY[data.Type]
-  local secret_type = category == C.CELL.CATEGORY.SECRET and data.Type or nil
 
   local cids = {}
   for i = 1, #shape_offsets do
@@ -62,11 +68,6 @@ local function parse_room(room_desc)
       cid = cids[i],
       lid = lid,
       category = category,
-      candidate_info = secret_type and {
-        secret_type = secret_type,
-        neighbors_to_check = {},
-        marker_status = C.MARKER.STATUS.HIDDEN,
-      } or nil,
     }
   end
 
@@ -103,7 +104,7 @@ end
 
 ---@param cid integer
 ---@param secret_type LD_SecretType
----@return LD_CellNeighbors
+---@return LD_Entries
 local function get_neighbors_to_check(cid, secret_type)
   local result = {}
   local neighbors = M.get_neighbors(cid)
@@ -113,7 +114,14 @@ local function get_neighbors_to_check(cid, secret_type)
       (n_cell.category == C.CELL.CATEGORY.NORMAL or
        (secret_type == C.SECRET_TYPE.REGULAR and
         n_cell.category == C.CELL.CATEGORY.SPECIAL)) then
-      result[dir] = n_cid
+      local source_room = M.rooms[n_cell.lid]
+      result[dir] = {
+        source_lid = n_cell.lid,
+        source_cid = n_cid,
+        via_cid = nil,
+        doorslot = geometry.get_doorslot(cid - source_room.tl_cid, source_room.shape),
+        checked = false,
+      }
     end
   end
   return result
@@ -176,15 +184,12 @@ local function find_fakes()
       goto continue
     end
 
-    M.cells[cid] = {
+    M.candidates[cid] = {
       cid = cid,
+      secret_type = type,
       lid = nil,
-      category = C.CELL.CATEGORY.FAKE,
-      candidate_info = {
-        secret_type = type,
-        neighbors_to_check = get_neighbors_to_check(cid, type),
-        marker_status = C.MARKER.STATUS.HIDDEN,
-      },
+      marker_status = C.MARKER.STATUS.HIDDEN,
+      entries = get_neighbors_to_check(cid, type),
     }
 
     ::continue::
@@ -197,6 +202,7 @@ function M.reload()
   state.update(level)
 
   M.cells = {}
+  M.candidates = {}
   M.rooms = {}
 
   local rooms_raw = level:GetRooms()
@@ -205,10 +211,14 @@ function M.reload()
   end
   for cid, cell in pairs(M.cells) do
     if cell.category == C.CELL.CATEGORY.SECRET then
-     local info = cell.candidate_info
-      if info then
-        info.neighbors_to_check = get_neighbors_to_check(cid, info.secret_type)
-      end
+      local secret_type = M.rooms[cell.lid].type
+      M.candidates[cid] = {
+        cid = cid,
+        secret_type = secret_type,
+        lid = cell.lid,
+        marker_status = C.MARKER.STATUS.HIDDEN,
+        entries = get_neighbors_to_check(cid, secret_type),
+      }
     end
   end
 
@@ -229,14 +239,11 @@ function M.get_candidate_neighbors(lid)
   local room = M.rooms[lid]
   if not room then return result end
 
-  local cids = room.cids;
-  for _, cid in ipairs(cids) do
+  for _, cid in ipairs(room.cids) do
     for dir, n_cid in pairs(M.get_neighbors(cid)) do
-      local n_cell = M.cells[n_cid]
       local dir_reverse = C.DIR_REVERSE[dir]
-      if n_cell and
-         n_cell.candidate_info and
-         n_cell.candidate_info.neighbors_to_check[dir_reverse] == cid then
+      local cand = M.candidates[n_cid]
+      if cand and cand.entries[dir_reverse] then
         result[#result + 1] = { dir = dir, cid = n_cid }
       end
     end
@@ -254,9 +261,9 @@ function M.clear_fake_neighbors(lid)
     local neighbors = M.get_neighbors(cid)
 
     for _, n_cid in pairs(neighbors) do
-      local n_cell = M.cells[n_cid]
-      if n_cell and n_cell.category == C.CELL.CATEGORY.FAKE then
-        M.cells[n_cid] = nil
+      local cand = M.candidates[n_cid]
+      if cand and cand.lid == nil then
+        M.candidates[n_cid] = nil
       end
     end
   end
@@ -267,21 +274,23 @@ function M.clear_fake_if_all_found()
 
   for _, secret_type in pairs(C.SECRET_TYPE) do
     local all_found = true
-    for _, room in pairs(M.rooms) do
-      local desc = rooms:Get(room.lid)
-      if desc and desc.Data.Type == secret_type and desc.DisplayFlags == 0 then
-        all_found = false
+    for _, cand in pairs(M.candidates) do
+      if cand.lid ~= nil and cand.secret_type == secret_type then
+        local desc = rooms:Get(cand.lid)
+        if desc and desc.DisplayFlags == 0 then
+          all_found = false
+          break
+        end
       end
     end
 
     if all_found then
-      for cid, cell in pairs(M.cells) do
-        if cell.candidate_info and
-           cell.candidate_info.secret_type == secret_type then
-          if cell.category == C.CELL.CATEGORY.FAKE then
-            M.cells[cid] = nil
-          elseif cell.category == C.CELL.CATEGORY.SECRET then
-            cell.candidate_info.marker_status = C.MARKER.STATUS.FOUND
+      for cid, cand in pairs(M.candidates) do
+        if cand.secret_type == secret_type then
+          if cand.lid == nil then
+            M.candidates[cid] = nil
+          else
+            cand.marker_status = C.MARKER.STATUS.FOUND
           end
         end
       end

@@ -75,23 +75,23 @@ local function obstacle_check(room, neighbors)
   end
 
   for _, n in pairs(neighbors) do
-    if not map.cells[n.cid] then goto continue end
+    local cand = map.candidates[n.cid]
+    if not cand then goto continue end
 
     local cid = n.cid - C.CELL.DIR_OFFSETS[n.dir]
     local d_gid = geometry.door_gid(cid - room.tl_cid, n.dir, w)
     local slot = geometry.get_doorslot(n.cid - room.tl_cid, room.shape)
 
     if visited[d_gid // w][d_gid % w] and room_obj:IsDoorSlotAllowed(slot) then
-      map.cells[n.cid].candidate_info
-        .neighbors_to_check[C.DIR_REVERSE[n.dir]] = nil
+      cand.entries[C.DIR_REVERSE[n.dir]].checked = true
       goto continue
     end
 
-    if map.cells[n.cid].category == C.CELL.CATEGORY.FAKE then
-      map.cells[n.cid] = nil
+    if cand.lid == nil then
+      map.candidates[n.cid] = nil
     else
       log.error("Try to remove a real secret room: ")
-      log.print_room(map.cells[n.cid].lid, map):error()
+      log.print_room(cand.lid, map):error()
     end
 
     ::continue::
@@ -133,20 +133,20 @@ function M.bomb_check(effect)
   for _, cid in pairs(room.cids) do
     local neighbors = map.get_neighbors(cid)
     for dir, n_cid in pairs(neighbors) do
-      local n_cell = map.cells[n_cid]
-      if not n_cell or not n_cell.candidate_info then
+      local cand = map.candidates[n_cid]
+      if not cand then
         goto continue
       end
 
-      if n_cell.category == C.CELL.CATEGORY.SECRET then
+      if cand.lid ~= nil then
         map.clear_fake_if_all_found()
         goto continue
       end
 
-local d_gid = geometry.door_gid(cid - room.tl_cid, dir, room_obj:GetGridWidth())
+      local d_gid = geometry.door_gid(cid - room.tl_cid, dir, room_obj:GetGridWidth())
       local dist = (bomb_pos - room_obj:GetGridPosition(d_gid)):Length()
       if dist < BOMB_RADIUS then
-        map.cells[n_cid] = nil
+        map.candidates[n_cid] = nil
         return
       end
 

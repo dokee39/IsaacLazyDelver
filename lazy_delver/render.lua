@@ -51,25 +51,26 @@ end
 local function update_marker()
   local rooms = Game():GetLevel():GetRooms()
 
-  for _, cell in pairs(map.cells) do
-    local info = cell.candidate_info
-    if not info or info.marker_status == C.MARKER.STATUS.FOUND then
+  for cid, cand in pairs(map.candidates) do
+    if cand.marker_status == C.MARKER.STATUS.FOUND then
       goto continue
     end
 
     local all_visible = true
     local all_checked = true
-    for _, n_cid in pairs(info.neighbors_to_check) do
-      all_checked = false
+    for dir, entry in pairs(cand.entries) do
+      if not entry.checked then
+        all_checked = false
+      end
 
       local lid
       if state.get_dimension() == C.DIMENSION.MIRROR then
-        lid = map.rooms[map.cells[n_cid].lid].mirror_lid
+        lid = map.rooms[entry.source_lid].mirror_lid
       else
-        lid = map.cells[n_cid].lid
+        lid = entry.source_lid
       end
       if not lid then
-        error("cell " .. n_cid .. " should have a mirror lid")
+        error("candidate " .. cid .. " dir " .. dir .. " should have a mirror lid")
       end
 
       local desc = rooms:Get(lid)
@@ -80,17 +81,16 @@ local function update_marker()
     end
 
     if not all_visible then
-      info.marker_status = C.MARKER.STATUS.HIDDEN
+      cand.marker_status = C.MARKER.STATUS.HIDDEN
     elseif not all_checked then
-      info.marker_status = C.MARKER.STATUS.DIM
+      cand.marker_status = C.MARKER.STATUS.DIM
     else
-      info.marker_status = C.MARKER.STATUS.BRIGHT
+      cand.marker_status = C.MARKER.STATUS.BRIGHT
     end
 
     ::continue::
   end
 end
-
 
 function M.tab_hold_check()
   if state.is_ignored() then return end
@@ -132,14 +132,12 @@ function M.render()
   local is_mirror = state.get_dimension() == C.DIMENSION.MIRROR
   local show_red = state.can_see_red()
 
-  for cid, cell in pairs(map.cells) do
-    local info = cell.candidate_info
-    if not info then goto continue end
-    if not show_red and info.secret_type == C.SECRET_TYPE.ULTRA then
+  for cid, cand in pairs(map.candidates) do
+    if not show_red and cand.secret_type == C.SECRET_TYPE.ULTRA then
       goto continue
     end
-    if info.marker_status == C.MARKER.STATUS.HIDDEN or
-       info.marker_status == C.MARKER.STATUS.FOUND then
+    if cand.marker_status == C.MARKER.STATUS.HIDDEN or
+       cand.marker_status == C.MARKER.STATUS.FOUND then
       goto continue
     end
 
@@ -149,8 +147,8 @@ function M.render()
     end
     local pos = Vector(pos_origin.X + c * CELL_W + 8,
                         pos_origin.Y + r * CELL_H + 7)
-    local colors = C.MARKER.COLORS[info.secret_type]
-    local alpha = C.MARKER.ALPHA[info.marker_status]
+    local colors = C.MARKER.COLORS[cand.secret_type]
+    local alpha = C.MARKER.ALPHA[cand.marker_status]
     marker_sprite.Color = Color(
       colors[1], colors[2], colors[3],
       alpha * (tab_hold_cnt / TAB_HOLD_MAX),
