@@ -4,6 +4,110 @@ local C = require("lazy_delver.const")
 
 local M = {}
 
+
+---@type table<LD_Dir, string>
+local DIR_TO_STRING = {
+  [C.DIR.LEFT]  = "left",
+  [C.DIR.UP]    = "up",
+  [C.DIR.RIGHT] = "right",
+  [C.DIR.DOWN]  = "down",
+}
+
+---@type table<LD_SecretType, table<boolean, string>>
+local FAKE_SYM = {
+  [C.SECRET_TYPE.REGULAR] = { [true] = " R ", [false] = " r " },
+  [C.SECRET_TYPE.SUPER]   = { [true] = " S ", [false] = " s " },
+  [C.SECRET_TYPE.ULTRA]   = { [true] = " U ", [false] = " u " },
+}
+---@type table<LD_SecretType, string>
+local SECRET_SYM = {
+  [C.SECRET_TYPE.REGULAR] = "<R>",
+  [C.SECRET_TYPE.SUPER]   = "<S>",
+  [C.SECRET_TYPE.ULTRA]   = "<U>",
+}
+---@type table<LD_CellCategory, string>
+local OTHER_SYM = {
+  [C.CELL.CATEGORY.BOSS]    = "B",
+  [C.CELL.CATEGORY.NORMAL]  = "N",
+  [C.CELL.CATEGORY.SPECIAL] = "C",
+}
+
+---@type table<LevelStage, table<StageType, string>>
+local STAGE_NAME = {
+  [LevelStage.STAGE1_1] = {
+    [StageType.STAGETYPE_ORIGINAL]     = "Basement 1",
+    [StageType.STAGETYPE_WOTL]         = "Cellar 1",
+    [StageType.STAGETYPE_AFTERBIRTH]   = "Burning Basement 1",
+    [StageType.STAGETYPE_REPENTANCE]   = "Downpour 1",
+    [StageType.STAGETYPE_REPENTANCE_B] = "Dross 1",
+  },
+  [LevelStage.STAGE1_2] = {
+    [StageType.STAGETYPE_ORIGINAL]     = "Basement 2",
+    [StageType.STAGETYPE_WOTL]         = "Cellar 2",
+    [StageType.STAGETYPE_AFTERBIRTH]   = "Burning Basement 2",
+    [StageType.STAGETYPE_REPENTANCE]   = "Downpour 2",
+    [StageType.STAGETYPE_REPENTANCE_B] = "Dross 2",
+  },
+  [LevelStage.STAGE2_1] = {
+    [StageType.STAGETYPE_ORIGINAL]     = "Caves 1",
+    [StageType.STAGETYPE_WOTL]         = "Catacombs 1",
+    [StageType.STAGETYPE_AFTERBIRTH]   = "Flooded Caves 1",
+    [StageType.STAGETYPE_REPENTANCE]   = "Mines 1",
+    [StageType.STAGETYPE_REPENTANCE_B] = "Ashpit 1",
+  },
+  [LevelStage.STAGE2_2] = {
+    [StageType.STAGETYPE_ORIGINAL]     = "Caves 2",
+    [StageType.STAGETYPE_WOTL]         = "Catacombs 2",
+    [StageType.STAGETYPE_AFTERBIRTH]   = "Flooded Caves 2",
+    [StageType.STAGETYPE_REPENTANCE]   = "Mines 2",
+    [StageType.STAGETYPE_REPENTANCE_B] = "Ashpit 2",
+  },
+  [LevelStage.STAGE3_1] = {
+    [StageType.STAGETYPE_ORIGINAL]     = "Depths 1",
+    [StageType.STAGETYPE_WOTL]         = "Necropolis 1",
+    [StageType.STAGETYPE_AFTERBIRTH]   = "Dank Depths 1",
+    [StageType.STAGETYPE_REPENTANCE]   = "Mausoleum 1",
+    [StageType.STAGETYPE_REPENTANCE_B] = "Gehenna 1",
+  },
+  [LevelStage.STAGE3_2] = {
+    [StageType.STAGETYPE_ORIGINAL]     = "Depths 2",
+    [StageType.STAGETYPE_WOTL]         = "Necropolis 2",
+    [StageType.STAGETYPE_AFTERBIRTH]   = "Dank Depths 2",
+    [StageType.STAGETYPE_REPENTANCE]   = "Mausoleum 2",
+    [StageType.STAGETYPE_REPENTANCE_B] = "Gehenna 2",
+  },
+  [LevelStage.STAGE4_1] = {
+    [StageType.STAGETYPE_ORIGINAL]     = "Womb 1",
+    [StageType.STAGETYPE_WOTL]         = "Utero 1",
+    [StageType.STAGETYPE_AFTERBIRTH]   = "Scarred Womb 1",
+    [StageType.STAGETYPE_REPENTANCE]   = "Corpse 1",
+  },
+  [LevelStage.STAGE4_2] = {
+    [StageType.STAGETYPE_ORIGINAL]     = "Womb 2",
+    [StageType.STAGETYPE_WOTL]         = "Utero 2",
+    [StageType.STAGETYPE_AFTERBIRTH]   = "Scarred Womb 2",
+    [StageType.STAGETYPE_REPENTANCE]   = "Corpse 2",
+  },
+  [LevelStage.STAGE4_3] = {
+    [StageType.STAGETYPE_ORIGINAL]     = "Blue Womb",
+  },
+  [LevelStage.STAGE5] = {
+    [StageType.STAGETYPE_ORIGINAL]     = "Sheol",
+    [StageType.STAGETYPE_WOTL]         = "Cathedral",
+  },
+  [LevelStage.STAGE6] = {
+    [StageType.STAGETYPE_ORIGINAL]     = "Dark Room",
+    [StageType.STAGETYPE_WOTL]         = "The Chest",
+  },
+  [LevelStage.STAGE7] = {
+    [StageType.STAGETYPE_ORIGINAL]     = "The Void",
+  },
+  [LevelStage.STAGE8] = {
+    [StageType.STAGETYPE_ORIGINAL]     = "Home",
+  },
+}
+
+
 ---@param s string
 function M.info(s)
   print(s)
@@ -39,6 +143,12 @@ function Log:error()
 end
 
 
+function M.new_level(stage, stage_type)
+  local stage_name = STAGE_NAME[stage] and STAGE_NAME[stage][stage_type] or
+    ("undefined stage " .. tostring(stage) .. " (type: " .. tostring(stage_type) .. ")")
+  return Log:new({ "<=== New Level: " .. stage_name .. " ===>" })
+end
+
 ---@param cid LD_Cid
 ---@return string
 local function to_point(cid)
@@ -59,9 +169,9 @@ local function to_sym(cid, map)
     for _ in pairs(cell.candidate_info.neighbors_to_check) do
       cnt = cnt + 1
     end
-    return C.CELL.FAKE_SYM[cell.candidate_info.secret_type][cnt == 0]
+    return FAKE_SYM[cell.candidate_info.secret_type][cnt == 0]
   elseif cell.category == C.CELL.CATEGORY.SECRET then
-    return C.CELL.SECRET_SYM[cell.candidate_info.secret_type]
+    return SECRET_SYM[cell.candidate_info.secret_type]
   end
 
   local offsets = C.CELL.SHAPE_OFFSETS[map.rooms[cell.lid].shape]
@@ -71,7 +181,7 @@ local function to_sym(cid, map)
     lb, rb = "{", "}"
   end
 
-  return lb .. C.CELL.OTHER_SYM[cell.category] .. rb
+  return lb .. OTHER_SYM[cell.category] .. rb
 end
 
 

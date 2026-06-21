@@ -114,7 +114,7 @@ function M.update(level)
     M.items.passive[type].possess = false
   end
 
-  log.info("<=== New Level: " .. C.STAGE_NAME[stage][stage_type] .. " ===>")
+  log.new_level(stage, stage_type):info()
 
   if level:IsAscent() or
      level:GetStage() == LevelStage.STAGE8 or

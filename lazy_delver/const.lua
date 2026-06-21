@@ -27,94 +27,11 @@ M.DIR_REVERSE = {
   [M.DIR.DOWN]  = M.DIR.UP,
 }
 
----@type table<LD_Dir, string>
-M.DIR_TO_STRING = {
-  [M.DIR.LEFT]  = "left",
-  [M.DIR.UP]    = "up",
-  [M.DIR.RIGHT] = "right",
-  [M.DIR.DOWN]  = "down",
-}
-
 ---@enum LD_SecretType
 M.SECRET_TYPE = {
   REGULAR = RoomType.ROOM_SECRET,
   SUPER = RoomType.ROOM_SUPERSECRET,
   ULTRA = RoomType.ROOM_ULTRASECRET,
-}
-
----@type table<LevelStage, table<StageType, string>>
-M.STAGE_NAME = {
-  [LevelStage.STAGE1_1] = {
-    [StageType.STAGETYPE_ORIGINAL]     = "Basement 1",
-    [StageType.STAGETYPE_WOTL]         = "Cellar 1",
-    [StageType.STAGETYPE_AFTERBIRTH]   = "Burning Basement 1",
-    [StageType.STAGETYPE_REPENTANCE]   = "Downpour 1",
-    [StageType.STAGETYPE_REPENTANCE_B] = "Dross 1",
-  },
-  [LevelStage.STAGE1_2] = {
-    [StageType.STAGETYPE_ORIGINAL]     = "Basement 2",
-    [StageType.STAGETYPE_WOTL]         = "Cellar 2",
-    [StageType.STAGETYPE_AFTERBIRTH]   = "Burning Basement 2",
-    [StageType.STAGETYPE_REPENTANCE]   = "Downpour 2",
-    [StageType.STAGETYPE_REPENTANCE_B] = "Dross 2",
-  },
-  [LevelStage.STAGE2_1] = {
-    [StageType.STAGETYPE_ORIGINAL]     = "Caves 1",
-    [StageType.STAGETYPE_WOTL]         = "Catacombs 1",
-    [StageType.STAGETYPE_AFTERBIRTH]   = "Flooded Caves 1",
-    [StageType.STAGETYPE_REPENTANCE]   = "Mines 1",
-    [StageType.STAGETYPE_REPENTANCE_B] = "Ashpit 1",
-  },
-  [LevelStage.STAGE2_2] = {
-    [StageType.STAGETYPE_ORIGINAL]     = "Caves 2",
-    [StageType.STAGETYPE_WOTL]         = "Catacombs 2",
-    [StageType.STAGETYPE_AFTERBIRTH]   = "Flooded Caves 2",
-    [StageType.STAGETYPE_REPENTANCE]   = "Mines 2",
-    [StageType.STAGETYPE_REPENTANCE_B] = "Ashpit 2",
-  },
-  [LevelStage.STAGE3_1] = {
-    [StageType.STAGETYPE_ORIGINAL]     = "Depths 1",
-    [StageType.STAGETYPE_WOTL]         = "Necropolis 1",
-    [StageType.STAGETYPE_AFTERBIRTH]   = "Dank Depths 1",
-    [StageType.STAGETYPE_REPENTANCE]   = "Mausoleum 1",
-    [StageType.STAGETYPE_REPENTANCE_B] = "Gehenna 1",
-  },
-  [LevelStage.STAGE3_2] = {
-    [StageType.STAGETYPE_ORIGINAL]     = "Depths 2",
-    [StageType.STAGETYPE_WOTL]         = "Necropolis 2",
-    [StageType.STAGETYPE_AFTERBIRTH]   = "Dank Depths 2",
-    [StageType.STAGETYPE_REPENTANCE]   = "Mausoleum 2",
-    [StageType.STAGETYPE_REPENTANCE_B] = "Gehenna 2",
-  },
-  [LevelStage.STAGE4_1] = {
-    [StageType.STAGETYPE_ORIGINAL]     = "Womb 1",
-    [StageType.STAGETYPE_WOTL]         = "Utero 1",
-    [StageType.STAGETYPE_AFTERBIRTH]   = "Scarred Womb 1",
-    [StageType.STAGETYPE_REPENTANCE]   = "Corpse 1",
-  },
-  [LevelStage.STAGE4_2] = {
-    [StageType.STAGETYPE_ORIGINAL]     = "Womb 2",
-    [StageType.STAGETYPE_WOTL]         = "Utero 2",
-    [StageType.STAGETYPE_AFTERBIRTH]   = "Scarred Womb 2",
-    [StageType.STAGETYPE_REPENTANCE]   = "Corpse 2",
-  },
-  [LevelStage.STAGE4_3] = {
-    [StageType.STAGETYPE_ORIGINAL]     = "Blue Womb",
-  },
-  [LevelStage.STAGE5] = {
-    [StageType.STAGETYPE_ORIGINAL]     = "Sheol",
-    [StageType.STAGETYPE_WOTL]         = "Cathedral",
-  },
-  [LevelStage.STAGE6] = {
-    [StageType.STAGETYPE_ORIGINAL]     = "Dark Room",
-    [StageType.STAGETYPE_WOTL]         = "The Chest",
-  },
-  [LevelStage.STAGE7] = {
-    [StageType.STAGETYPE_ORIGINAL]     = "The Void",
-  },
-  [LevelStage.STAGE8] = {
-    [StageType.STAGETYPE_ORIGINAL]     = "Home",
-  },
 }
 
 -- MAP
@@ -163,25 +80,6 @@ M.CELL.CATEGORY = {
   BOSS = 3,
   SECRET = 4,
   FAKE = 5,
-}
-
----@type table<LD_SecretType, table<boolean, string>>
-M.CELL.FAKE_SYM = {
-  [M.SECRET_TYPE.REGULAR] = { [true] = " R ", [false] = " r " },
-  [M.SECRET_TYPE.SUPER]   = { [true] = " S ", [false] = " s " },
-  [M.SECRET_TYPE.ULTRA]   = { [true] = " U ", [false] = " u " },
-}
----@type table<LD_SecretType, string>
-M.CELL.SECRET_SYM = {
-  [M.SECRET_TYPE.REGULAR] = "<R>",
-  [M.SECRET_TYPE.SUPER]   = "<S>",
-  [M.SECRET_TYPE.ULTRA]   = "<U>",
-}
----@type table<LD_CellCategory, string>
-M.CELL.OTHER_SYM = {
-  [M.CELL.CATEGORY.BOSS]    = "B",
-  [M.CELL.CATEGORY.NORMAL]  = "N",
-  [M.CELL.CATEGORY.SPECIAL] = "C",
 }
 
 ---@type table<RoomType, LD_CellCategory>
