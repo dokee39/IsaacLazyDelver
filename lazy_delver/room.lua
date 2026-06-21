@@ -1,7 +1,6 @@
 ---@module "lazy_delver.room"
 
 local C = require("lazy_delver.const")
-local geometry = require("lazy_delver.geometry")
 local state = require("lazy_delver.state")
 local log = require("lazy_delver.log")
 local map = require("lazy_delver.map")
@@ -53,9 +52,19 @@ local function dfs(visited, grid, r, c)
   dfs(visited, grid, r, c + 1)
 end
 
----@param room LD_Room
----@param neighbors LD_RoomNeighbors
-local function obstacle_check(room, neighbors)
+function M.obstacle_check()
+  if state.has_changed() then map.reload() end
+  if state.is_ignored() then return end
+
+  local lid = Game():GetLevel():GetCurrentRoomDesc().ListIndex
+  log.info("=== Entered New Room ===")
+  local room = map.rooms[lid]
+  if not room then
+    log.info("list id: " .. lid)
+    log.info("")
+    return
+  end
+
   local room_obj = Game():GetRoom()
   local w, h = room_obj:GetGridWidth(), room_obj:GetGridHeight()
   local size = room_obj:GetGridSize()
@@ -74,45 +83,28 @@ local function obstacle_check(room, neighbors)
     end
   end
 
-  for _, n in pairs(neighbors) do
-    local cand = map.candidates[n.cid]
-    if not cand then goto continue end
+  for cid, cand in pairs(map.candidates) do
+    for _, entry in pairs(cand.entries) do
+      if entry.source_lid ~= lid or entry.checked then
+        goto continue
+      end
 
-    local cid = n.cid - C.CELL.DIR_OFFSETS[n.dir]
-    local d_gid = geometry.door_gid(cid - room.tl_cid, n.dir, w)
-    local slot = geometry.get_doorslot(n.cid - room.tl_cid, room.shape)
+      local door_pos = room_obj:GetDoorSlotPosition(entry.doorslot)
+      local door_gid = room_obj:GetGridIndex(door_pos)
+      if door_gid >= 0 and visited[door_gid // w][door_gid % w]
+        and room_obj:IsDoorSlotAllowed(entry.doorslot) then
+        entry.checked = true
+      elseif cand.lid == nil then
+        map.candidates[cid] = nil
+        break
+      else
+        log.error("Try to remove a real secret room: ")
+        log.print_room(cand.lid, map):error()
+      end
 
-    if visited[d_gid // w][d_gid % w] and room_obj:IsDoorSlotAllowed(slot) then
-      cand.entries[C.DIR_REVERSE[n.dir]].checked = true
-      goto continue
+      ::continue::
     end
-
-    if cand.lid == nil then
-      map.candidates[n.cid] = nil
-    else
-      log.error("Try to remove a real secret room: ")
-      log.print_room(cand.lid, map):error()
-    end
-
-    ::continue::
   end
-end
-
-function M.obstacle_check()
-  if state.has_changed() then map.reload() end
-  if state.is_ignored() then return end
-
-  local lid = Game():GetLevel():GetCurrentRoomDesc().ListIndex
-  log.info("=== Entered New Room ===")
-  local room = map.rooms[lid]
-  if not room then
-    log.info("list id: " .. lid)
-    log.info("")
-    return
-  end
-
-  local neighbors = map.get_candidate_neighbors(lid)
-  obstacle_check(room, neighbors)
 
   log.print_room(lid, map):info()
 end
@@ -130,30 +122,28 @@ function M.bomb_check(effect)
   local bomb_gid = room_obj:GetGridIndex(bomb_pos)
   if bomb_gid < 0 then return end
 
-  for _, cid in pairs(room.cids) do
-    local neighbors = map.get_neighbors(cid)
-    for dir, n_cid in pairs(neighbors) do
-      local cand = map.candidates[n_cid]
-      if not cand then
+  for cid, cand in pairs(map.candidates) do
+    for _, entry in pairs(cand.entries) do
+      if entry.source_lid ~= lid then
         goto continue
       end
 
       if cand.lid ~= nil then
         map.clear_fake_if_all_found()
-        goto continue
+        goto next_cand
       end
 
-      local d_gid = geometry.door_gid(cid - room.tl_cid, dir, room_obj:GetGridWidth())
-      local dist = (bomb_pos - room_obj:GetGridPosition(d_gid)):Length()
+      local door_pos = room_obj:GetDoorSlotPosition(entry.doorslot)
+      local dist = (bomb_pos - door_pos):Length()
       if dist < BOMB_RADIUS then
-        map.candidates[n_cid] = nil
+        map.candidates[cid] = nil
         return
       end
 
       ::continue::
     end
+    ::next_cand::
   end
-
 end
 
 return M

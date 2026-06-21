@@ -144,7 +144,7 @@ end
 ---@param cid LD_Cid
 ---@return string
 local function to_point(cid)
-  return "(" .. cid // C.MAP.ROWS .. ", " .. cid % C.MAP.COLS .. ")"
+  return "(" .. cid // C.MAP.COLS .. ", " .. cid % C.MAP.COLS .. ")"
 end
 
 ---@param cid LD_Cid
@@ -189,9 +189,8 @@ function M.print_room(lid, map)
 
   local cids = room.cids
 
-  local _, s_cid = next(cids)
-  assert(s_cid ~= nil)
-  local sym = to_sym(s_cid, map)
+  assert(cids[1] ~= nil)
+  local sym = to_sym(cids[1], map)
 
   local parts = {}
   for _, cid in pairs(cids) do
@@ -209,12 +208,14 @@ end
 ---@return LD_Log
 function M.print_map(map)
   local lines = {}
-  lines[#lines + 1] = "Total rooms: " .. #map.rooms + 1
+  lines[#lines + 1] = "Total rooms: " .. (#map.rooms + 1)
 
   for lid = 0, #map.rooms do
-    local out = M.print_room(lid, map)
-    for _, line in ipairs(out._lines) do
-      lines[#lines + 1] = line
+    if map.rooms[lid].lid == lid then
+      local out = M.print_room(lid, map)
+      for _, line in ipairs(out._lines) do
+        lines[#lines + 1] = line
+      end
     end
   end
 

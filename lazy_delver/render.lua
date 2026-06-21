@@ -51,14 +51,14 @@ end
 local function update_marker()
   local rooms = Game():GetLevel():GetRooms()
 
-  for cid, cand in pairs(map.candidates) do
+  for _, cand in pairs(map.candidates) do
     if cand.marker_status == C.MARKER.STATUS.FOUND then
       goto continue
     end
 
     local all_visible = true
     local all_checked = true
-    for dir, entry in pairs(cand.entries) do
+    for _, entry in pairs(cand.entries) do
       if not entry.checked then
         all_checked = false
       end
@@ -70,7 +70,7 @@ local function update_marker()
         lid = entry.source_lid
       end
       if not lid then
-        error("candidate " .. cid .. " dir " .. dir .. " should have a mirror lid")
+        error("room " .. entry.source_lid .. " should have a mirror lid")
       end
 
       local desc = rooms:Get(lid)

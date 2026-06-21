@@ -4,14 +4,14 @@ local C = require("lazy_delver.const")
 
 local M = {}
 
-M.DIR_DELTA = {
+local DIR_DELTA = {
   [C.DIR.LEFT]  = { R =  0, C = -1 },
   [C.DIR.UP]    = { R = -1, C =  0 },
   [C.DIR.RIGHT] = { R =  0, C =  1 },
   [C.DIR.DOWN]  = { R =  1, C =  0 },
 }
 
-M.DOOR_INFO = {
+local DOOR_INFO = {
   [DoorSlot.LEFT0]  = { DIR = C.DIR.LEFT,  I = 0 },
   [DoorSlot.LEFT1]  = { DIR = C.DIR.LEFT,  I = 1 },
   [DoorSlot.UP0]    = { DIR = C.DIR.UP,    I = 0 },
@@ -22,7 +22,7 @@ M.DOOR_INFO = {
   [DoorSlot.DOWN1]  = { DIR = C.DIR.DOWN,  I = 1 },
 }
 
-M.DIR_BAN_BIT = {
+local DIR_BAN_BIT = {
   [C.DIR.LEFT]  = 0x10,  -- bit 4
   [C.DIR.UP]    = 0x20,  -- bit 5
   [C.DIR.RIGHT] = 0x40,  -- bit 6
@@ -31,7 +31,7 @@ M.DIR_BAN_BIT = {
 
 -- Lower 4 bits: occupancy mask (bit0=cell(0,0), bit1=cell(0,1), bit2=cell(1,0), bit3=cell(1,1)).
 -- Upper 4 bits: direction ban mask (bit4=LEFT, bit5=UP, bit6=RIGHT, bit7=DOWN).
-M.SHAPE_DATA = {
+local SHAPE_DATA = {
   [RoomShape.ROOMSHAPE_1x1] = 0x01,
   [RoomShape.ROOMSHAPE_IH]  = 0x01 | 0xA0,
   [RoomShape.ROOMSHAPE_IV]  = 0x01 | 0x50,
@@ -52,15 +52,15 @@ M.SHAPE_DATA = {
 ---@param shape RoomShape
 ---@return DoorSlot?
 function M.get_doorslot(offset, shape)
-  local data = M.SHAPE_DATA[shape]
+  local data = SHAPE_DATA[shape]
   if not data then return nil end
 
   local w = (data & 0x0A ~= 0) and 2 or 1
   local h = (data & 0x0C ~= 0) and 2 or 1
 
-  for slot, info in pairs(M.DOOR_INFO) do
-    if data & M.DIR_BAN_BIT[info.DIR] == 0 then
-      local d = M.DIR_DELTA[info.DIR]
+  for slot, info in pairs(DOOR_INFO) do
+    if data & DIR_BAN_BIT[info.DIR] == 0 then
+      local d = DIR_DELTA[info.DIR]
       local r, c
       if d.R == 0 then
         r, c = info.I, (d.C < 0) and 0 or (w - 1)
@@ -77,20 +77,25 @@ function M.get_doorslot(offset, shape)
   return nil
 end
 
----In-room grid index of the door tile on the wall of the source cell (at
----`offset`, relative to room tl) facing `dir`. `w` is the room grid width.
----@param offset integer source cell offset relative to room tl
----@param dir LD_Dir direction toward the candidate
----@param w integer room grid width
----@return integer
-function M.door_gid(offset, dir, w)
-  local r = (offset // C.MAP.COLS) * 7
-  local c = (offset % C.MAP.COLS == 0) and 0 or 13
-  if     dir == C.DIR.LEFT  then return (r + 4) * w + (c + 1)
-  elseif dir == C.DIR.RIGHT then return (r + 4) * w + (c + 13)
-  elseif dir == C.DIR.UP    then return (r + 1) * w + (c + 7)
-  elseif dir == C.DIR.DOWN  then return (r + 7) * w + (c + 7)
-  else error("invalid dir: " .. dir) end
+---@param cid LD_Cid
+---@return table<LD_Dir, LD_Cid>
+function M.get_neighbors(cid)
+  local neighbors = {}
+  local col = cid % C.MAP.COLS
+  if col > 0 then
+    neighbors[C.DIR.LEFT] = cid + C.CELL.DIR_OFFSETS[C.DIR.LEFT]
+  end
+  if col < C.MAP.COLS - 1 then
+    neighbors[C.DIR.RIGHT] = cid + C.CELL.DIR_OFFSETS[C.DIR.RIGHT]
+  end
+  if cid >= C.MAP.COLS then
+    neighbors[C.DIR.UP] = cid + C.CELL.DIR_OFFSETS[C.DIR.UP]
+  end
+  if cid < C.MAP.SIZE - C.MAP.COLS then
+    neighbors[C.DIR.DOWN] = cid + C.CELL.DIR_OFFSETS[C.DIR.DOWN]
+  end
+
+  return neighbors
 end
 
 return M

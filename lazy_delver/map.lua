@@ -20,7 +20,6 @@ M.cells = {}
 
 ---@class LD_Entry
 ---@field source_lid LD_Lid
----@field source_cid LD_Cid
 ---@field via_cid LD_Cid?  -- ULTRA only; nil for REGULAR/SUPER
 ---@field doorslot DoorSlot
 ---@field checked boolean
@@ -80,53 +79,28 @@ local function parse_room(room_desc)
   }
 end
 
-
----@param cid integer
----@return LD_CellNeighbors
-function M.get_neighbors(cid)
-  local neighbors = {}
-  local col = cid % C.MAP.COLS
-  if col > 0 then
-    neighbors[C.DIR.LEFT] = cid + C.CELL.DIR_OFFSETS[C.DIR.LEFT]
-  end
-  if col < C.MAP.COLS - 1 then
-    neighbors[C.DIR.RIGHT] = cid + C.CELL.DIR_OFFSETS[C.DIR.RIGHT]
-  end
-  if cid >= C.MAP.COLS then
-    neighbors[C.DIR.UP] = cid + C.CELL.DIR_OFFSETS[C.DIR.UP]
-  end
-  if cid < C.MAP.SIZE - C.MAP.COLS then
-    neighbors[C.DIR.DOWN] = cid + C.CELL.DIR_OFFSETS[C.DIR.DOWN]
-  end
-
-  return neighbors
-end
-
----@param cid integer
----@param secret_type LD_SecretType
----@return LD_Entries
-local function get_neighbors_to_check(cid, secret_type)
+local function build_entries(cid, secret_type)
   local result = {}
-  local neighbors = M.get_neighbors(cid)
-  for dir, n_cid in pairs(neighbors) do
+  for dir, n_cid in pairs(geometry.get_neighbors(cid)) do
     local n_cell = M.cells[n_cid]
     if n_cell and
       (n_cell.category == C.CELL.CATEGORY.NORMAL or
        (secret_type == C.SECRET_TYPE.REGULAR and
         n_cell.category == C.CELL.CATEGORY.SPECIAL)) then
       local source_room = M.rooms[n_cell.lid]
-      result[dir] = {
-        source_lid = n_cell.lid,
-        source_cid = n_cid,
-        via_cid = nil,
-        doorslot = geometry.get_doorslot(cid - source_room.tl_cid, source_room.shape),
-        checked = false,
-      }
+      local slot = geometry.get_doorslot(cid - source_room.tl_cid, source_room.shape)
+      if slot then
+        result[dir] = {
+          source_lid = n_cell.lid,
+          via_cid = nil,
+          doorslot = slot,
+          checked = false,
+        }
+      end
     end
   end
   return result
 end
-
 
 ---@param cid LD_Cid
 ---@return LD_SecretType?
@@ -134,7 +108,7 @@ local function fake_type(cid)
   local normal_count = 0
   local special_count = 0
 
-  local neighbors = M.get_neighbors(cid)
+  local neighbors = geometry.get_neighbors(cid)
   for dir, n_cid in pairs(neighbors) do
     local n_cell = M.cells[n_cid]
     if n_cell then
@@ -179,17 +153,17 @@ local function find_fakes()
       goto continue
     end
 
-    local type = fake_type(cid)
-    if type == nil then
+    local secret_type = fake_type(cid)
+    if secret_type == nil then
       goto continue
     end
 
     M.candidates[cid] = {
       cid = cid,
-      secret_type = type,
+      secret_type = secret_type,
       lid = nil,
       marker_status = C.MARKER.STATUS.HIDDEN,
-      entries = get_neighbors_to_check(cid, type),
+      entries = build_entries(cid, secret_type),
     }
 
     ::continue::
@@ -217,7 +191,7 @@ function M.reload()
         secret_type = secret_type,
         lid = cell.lid,
         marker_status = C.MARKER.STATUS.HIDDEN,
-        entries = get_neighbors_to_check(cid, secret_type),
+        entries = build_entries(cid, secret_type),
       }
     end
   end
@@ -233,32 +207,12 @@ end
 
 
 ---@param lid LD_Lid
----@return LD_RoomNeighbors
-function M.get_candidate_neighbors(lid)
-  local result = {}
-  local room = M.rooms[lid]
-  if not room then return result end
-
-  for _, cid in ipairs(room.cids) do
-    for dir, n_cid in pairs(M.get_neighbors(cid)) do
-      local dir_reverse = C.DIR_REVERSE[dir]
-      local cand = M.candidates[n_cid]
-      if cand and cand.entries[dir_reverse] then
-        result[#result + 1] = { dir = dir, cid = n_cid }
-      end
-    end
-  end
-
-  return result
-end
-
----@param lid LD_Lid
 function M.clear_fake_neighbors(lid)
   local room = M.rooms[lid]
   if not room then return end
 
   for _, cid in ipairs(room.cids) do
-    local neighbors = M.get_neighbors(cid)
+    local neighbors = geometry.get_neighbors(cid)
 
     for _, n_cid in pairs(neighbors) do
       local cand = M.candidates[n_cid]
@@ -275,8 +229,12 @@ function M.clear_fake_if_all_found()
   for _, secret_type in pairs(C.SECRET_TYPE) do
     local all_found = true
     for _, cand in pairs(M.candidates) do
-      if cand.lid ~= nil and cand.secret_type == secret_type then
-        local desc = rooms:Get(cand.lid)
+      local lid = cand.lid
+      if lid ~= nil and cand.secret_type == secret_type then
+        if state.get_dimension() == C.DIMENSION.MIRROR then
+          lid = M.rooms[lid].mirror_lid or lid
+        end
+        local desc = rooms:Get(lid)
         if desc and desc.DisplayFlags == 0 then
           all_found = false
           break

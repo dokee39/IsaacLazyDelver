@@ -19,14 +19,6 @@ M.DIR = {
   DOWN  = DoorSlot.DOWN0,
 }
 
----@type table<LD_Dir, LD_Dir>
-M.DIR_REVERSE = {
-  [M.DIR.LEFT]  = M.DIR.RIGHT,
-  [M.DIR.UP]    = M.DIR.DOWN,
-  [M.DIR.RIGHT] = M.DIR.LEFT,
-  [M.DIR.DOWN]  = M.DIR.UP,
-}
-
 ---@enum LD_SecretType
 M.SECRET_TYPE = {
   REGULAR = RoomType.ROOM_SECRET,
@@ -79,7 +71,6 @@ M.CELL.CATEGORY = {
   SPECIAL = 2,
   BOSS = 3,
   SECRET = 4,
-  FAKE = 5,
 }
 
 ---@type table<RoomType, LD_CellCategory>
