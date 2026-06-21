@@ -32,15 +32,34 @@ end
 
 mod:AddCallback(ModCallbacks.MC_POST_PEFFECT_UPDATE, function(_, player)
   if state.is_ignored() then return end
+  local function check(param, has)
+    if not has then
+      param.possess = false
+      return
+    end
+    if not param.possess then
+      param.possess = true
+      render.refresh()
+    end
+  end
+
+  local active0, active1 = player:GetActiveItem(0), player:GetActiveItem(1)
+  check(state.items.red[CollectibleType.COLLECTIBLE_RED_KEY],
+    (active0 == CollectibleType.COLLECTIBLE_RED_KEY) or
+    (active1 == CollectibleType.COLLECTIBLE_RED_KEY)
+  )
+
+  local card0, card1 = player:GetCard(0), player:GetCard(1)
+  check(state.items.red[Card.CARD_CRACKED_KEY],
+    (card0 == Card.CARD_CRACKED_KEY) or
+    (card1 == Card.CARD_CRACKED_KEY)
+  )
+  check(state.items.red[Card.CARD_SOUL_CAIN],
+    (card0 == Card.CARD_SOUL_CAIN) or
+    (card1 == Card.CARD_SOUL_CAIN)
+  )
 
   for type, param in pairs(state.items.passive) do
-    if player:HasCollectible(type) then
-      if not param.possess then
-        param.possess = true
-        render.refresh()
-      end
-    else
-      param.possess = false
-    end
+    check(param, player:HasCollectible(type))
   end
 end)

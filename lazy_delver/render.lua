@@ -107,7 +107,7 @@ end
 local function refresh()
   update_pos_origin()
   map.clear_fake_if_all_found()
-  if state.can_see_entrance() then
+  if state.can_see_entrance() or state.can_see_red() then
     local lid = Game():GetLevel():GetCurrentRoomDesc().ListIndex
     map.clear_fake_neighbors(lid)
   end
@@ -130,26 +130,35 @@ function M.render()
   if need_refresh then refresh() end
 
   local is_mirror = state.get_dimension() == C.DIMENSION.MIRROR
+  local show_red = state.can_see_red()
 
   for cid, cell in pairs(map.cells) do
     local info = cell.candidate_info
-    if info and info.marker_status ~= C.MARKER.STATUS.HIDDEN and
-              info.marker_status ~= C.MARKER.STATUS.FOUND then
-      local r, c = cid // C.MAP.COLS, cid % C.MAP.COLS
-      if is_mirror then
-        c = mirror_offset - c
-      end
-      local pos = Vector(pos_origin.X + c * CELL_W + 8,
-                         pos_origin.Y + r * CELL_H + 7)
-      local colors = C.MARKER.COLORS[info.secret_type]
-      local alpha = C.MARKER.ALPHA[info.marker_status]
-      marker_sprite.Color = Color(
-        colors[1], colors[2], colors[3],
-        alpha * (tab_hold_cnt / TAB_HOLD_MAX),
-        0, 0, 0
-      )
-      marker_sprite:Render(pos)
+    if not info then goto continue end
+    if not show_red and info.secret_type == C.SECRET_TYPE.ULTRA then
+      goto continue
     end
+    if info.marker_status == C.MARKER.STATUS.HIDDEN or
+       info.marker_status == C.MARKER.STATUS.FOUND then
+      goto continue
+    end
+
+    local r, c = cid // C.MAP.COLS, cid % C.MAP.COLS
+    if is_mirror then
+      c = mirror_offset - c
+    end
+    local pos = Vector(pos_origin.X + c * CELL_W + 8,
+                        pos_origin.Y + r * CELL_H + 7)
+    local colors = C.MARKER.COLORS[info.secret_type]
+    local alpha = C.MARKER.ALPHA[info.marker_status]
+    marker_sprite.Color = Color(
+      colors[1], colors[2], colors[3],
+      alpha * (tab_hold_cnt / TAB_HOLD_MAX),
+      0, 0, 0
+    )
+    marker_sprite:Render(pos)
+
+    ::continue::
   end
 end
 

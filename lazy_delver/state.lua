@@ -35,6 +35,7 @@ M.items = {
     { mc = ModCallbacks.MC_USE_CARD, type = Card.CARD_WORLD,           clear = false },
     { mc = ModCallbacks.MC_USE_CARD, type = Card.RUNE_ANSUZ,           clear = false },
     { mc = ModCallbacks.MC_USE_CARD, type = Card.CARD_GET_OUT_OF_JAIL, clear = true },
+    { mc = ModCallbacks.MC_USE_CARD, type = Card.CARD_SOUL_CAIN,       clear = true },
 
     { mc = ModCallbacks.MC_USE_PILL, type = PillEffect.PILLEFFECT_SEE_FOREVER, clear = false },
   },
@@ -45,7 +46,12 @@ M.items = {
     [CollectibleType.COLLECTIBLE_DOG_TOOTH]     = { reveal = false, possess = false },
     [CollectibleType.COLLECTIBLE_YO_LISTEN]     = { reveal = false, possess = false },
     [CollectibleType.COLLECTIBLE_SPELUNKER_HAT] = { reveal = false, possess = false },
-  }
+  },
+  red = {
+    [CollectibleType.COLLECTIBLE_RED_KEY] = { possess = false },
+    [Card.CARD_CRACKED_KEY]               = { possess = false },
+    [Card.CARD_SOUL_CAIN]                 = { possess = false },
+  },
 }
 
 function M.is_lost_cursed()
@@ -65,6 +71,14 @@ function M.can_see_entrance()
     end
   end
   return can_see or Game():GetLevel():GetCanSeeEverything()
+end
+
+function M.can_see_red()
+  local can_see = false
+  for _, param in pairs(M.items.red) do
+    if param.possess then can_see = true end
+  end
+  return can_see
 end
 
 ---@param level Level
