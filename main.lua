@@ -7,7 +7,7 @@ local render = require("lazy_delver.render")
 
 mod:AddCallback(ModCallbacks.MC_POST_NEW_ROOM, function()
   state.check()
-  room.obstacle_check()
+  room.door_check()
   render.refresh()
 end)
 mod:AddCallback(ModCallbacks.MC_POST_UPDATE, function()
@@ -18,6 +18,7 @@ mod:AddCallback(ModCallbacks.MC_POST_RENDER, function()
 end)
 mod:AddCallback(ModCallbacks.MC_POST_EFFECT_INIT, function(_, effect)
   room.bomb_check(effect)
+  render.refresh()
 end, EffectVariant.BOMB_EXPLOSION)
 
 for _, item in ipairs(state.items.active) do

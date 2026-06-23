@@ -49,22 +49,6 @@ M.CELL.DIR_OFFSETS = {
   [M.DIR.DOWN]  = M.MAP.COLS,
 }
 
----@type table<RoomShape, integer[]>
-M.CELL.SHAPE_OFFSETS = {
-  [RoomShape.ROOMSHAPE_1x1] = { 0 },
-  [RoomShape.ROOMSHAPE_IH]  = { 0 },
-  [RoomShape.ROOMSHAPE_IV]  = { 0 },
-  [RoomShape.ROOMSHAPE_1x2] = { 0, M.MAP.COLS },
-  [RoomShape.ROOMSHAPE_IIV] = { 0, M.MAP.COLS },
-  [RoomShape.ROOMSHAPE_2x1] = { 0, 1 },
-  [RoomShape.ROOMSHAPE_IIH] = { 0, 1 },
-  [RoomShape.ROOMSHAPE_2x2] = { 0, 1, M.MAP.COLS, M.MAP.COLS + 1 },
-  [RoomShape.ROOMSHAPE_LTL] = { 1, M.MAP.COLS, M.MAP.COLS + 1 },
-  [RoomShape.ROOMSHAPE_LTR] = { 0, M.MAP.COLS, M.MAP.COLS + 1 },
-  [RoomShape.ROOMSHAPE_LBL] = { 0, 1, M.MAP.COLS + 1 },
-  [RoomShape.ROOMSHAPE_LBR] = { 0, 1, M.MAP.COLS },
-}
-
 ---@enum LD_CellCategory
 M.CELL.CATEGORY = {
   NORMAL = 1,

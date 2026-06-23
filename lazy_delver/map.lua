@@ -1,9 +1,9 @@
 ---@module "lazy_delver.map"
 
 local C = require("lazy_delver.const")
+local geo = require("lazy_delver.geometry")
 local log = require("lazy_delver.log")
 local state = require("lazy_delver.state")
-local geometry = require("lazy_delver.geometry")
 
 ---@class LD_Map
 local M = {}
@@ -49,8 +49,10 @@ M.rooms = {}
 ---@param room_desc RoomDescriptor
 local function parse_room(room_desc)
   local data = room_desc.Data
+  if not data then return end
+
   local lid = room_desc.ListIndex
-  local shape_offsets = C.CELL.SHAPE_OFFSETS[data.Shape]
+  local shape_offsets = geo.SHAPE_OFFSETS[data.Shape]
   local category = C.CELL.ROOM_TYPE_TO_CATEGORY[data.Type]
 
   local cids = {}
@@ -79,21 +81,20 @@ local function parse_room(room_desc)
   }
 end
 
-local function build_entries(cid, secret_type)
+---@param cid LD_Cid
+local function build_entries(cid)
   local result = {}
-  for dir, n_cid in pairs(geometry.get_neighbors(cid)) do
+  local neighbors = geo.get_neighbors(cid)
+  for dir, n_cid in pairs(neighbors) do
     local n_cell = M.cells[n_cid]
-    if n_cell and
-      (n_cell.category == C.CELL.CATEGORY.NORMAL or
-       (secret_type == C.SECRET_TYPE.REGULAR and
-        n_cell.category == C.CELL.CATEGORY.SPECIAL)) then
-      local source_room = M.rooms[n_cell.lid]
-      local slot = geometry.get_doorslot(cid - source_room.tl_cid, source_room.shape)
-      if slot then
-        result[dir] = {
+    if n_cell and n_cell.category ~= C.CELL.CATEGORY.SECRET then
+      local room = M.rooms[n_cell.lid]
+      local door_dir = (dir + 2) % 4
+      local doorslot = geo.get_doorslot(door_dir, cid - room.tl_cid, room.shape)
+      if doorslot then
+        result[door_dir] = {
           source_lid = n_cell.lid,
-          via_cid = nil,
-          doorslot = slot,
+          doorslot = doorslot,
           checked = false,
         }
       end
@@ -108,7 +109,7 @@ local function fake_type(cid)
   local normal_count = 0
   local special_count = 0
 
-  local neighbors = geometry.get_neighbors(cid)
+  local neighbors = geo.get_neighbors(cid)
   for dir, n_cid in pairs(neighbors) do
     local n_cell = M.cells[n_cid]
     if n_cell then
@@ -163,7 +164,7 @@ local function find_fakes()
       secret_type = secret_type,
       lid = nil,
       marker_status = C.MARKER.STATUS.HIDDEN,
-      entries = build_entries(cid, secret_type),
+      entries = build_entries(cid),
     }
 
     ::continue::
@@ -180,7 +181,7 @@ function M.reload()
   M.rooms = {}
 
   local rooms_raw = level:GetRooms()
-  for lid = 0, #rooms_raw - 1 do
+  for lid = 0, rooms_raw.Size - 1 do
     parse_room(rooms_raw:Get(lid))
   end
   for cid, cell in pairs(M.cells) do
@@ -191,7 +192,7 @@ function M.reload()
         secret_type = secret_type,
         lid = cell.lid,
         marker_status = C.MARKER.STATUS.HIDDEN,
-        entries = build_entries(cid, secret_type),
+        entries = build_entries(cid),
       }
     end
   end
@@ -212,7 +213,7 @@ function M.clear_fake_neighbors(lid)
   if not room then return end
 
   for _, cid in ipairs(room.cids) do
-    local neighbors = geometry.get_neighbors(cid)
+    local neighbors = geo.get_neighbors(cid)
 
     for _, n_cid in pairs(neighbors) do
       local cand = M.candidates[n_cid]
@@ -222,39 +223,5 @@ function M.clear_fake_neighbors(lid)
     end
   end
 end
-
-function M.clear_fake_if_all_found()
-  local rooms = Game():GetLevel():GetRooms()
-
-  for _, secret_type in pairs(C.SECRET_TYPE) do
-    local all_found = true
-    for _, cand in pairs(M.candidates) do
-      local lid = cand.lid
-      if lid ~= nil and cand.secret_type == secret_type then
-        if state.get_dimension() == C.DIMENSION.MIRROR then
-          lid = M.rooms[lid].mirror_lid or lid
-        end
-        local desc = rooms:Get(lid)
-        if desc and desc.DisplayFlags == 0 then
-          all_found = false
-          break
-        end
-      end
-    end
-
-    if all_found then
-      for cid, cand in pairs(M.candidates) do
-        if cand.secret_type == secret_type then
-          if cand.lid == nil then
-            M.candidates[cid] = nil
-          else
-            cand.marker_status = C.MARKER.STATUS.FOUND
-          end
-        end
-      end
-    end
-  end
-end
-
 
 return M

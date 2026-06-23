@@ -1,6 +1,8 @@
 ---@module "lazy_delver.render"
 
 local C = require("lazy_delver.const")
+local geo = require("lazy_delver.geometry")
+local log = require("lazy_delver.log")
 local state = require("lazy_delver.state")
 local map = require("lazy_delver.map")
 
@@ -30,7 +32,7 @@ local function update_pos_origin()
     local desc = rooms:Get(lid)
     if desc and desc.DisplayFlags ~= 0 then
       local tl_cid = desc.GridIndex
-      local offsets = C.CELL.SHAPE_OFFSETS[desc.Data.Shape]
+      local offsets = geo.SHAPE_OFFSETS[desc.Data.Shape]
       for _, offset in ipairs(offsets) do
         local cid = tl_cid + offset
         local r, c = cid // C.MAP.COLS, cid % C.MAP.COLS
@@ -46,6 +48,39 @@ local function update_pos_origin()
     -top_row * CELL_H + 5 + Options.HUDOffset * 13
   )
   mirror_offset = left_col + right_col
+end
+
+local function check_real_and_clear_fake()
+  local rooms = Game():GetLevel():GetRooms()
+
+  for _, secret_type in pairs(C.SECRET_TYPE) do
+    local all_found = true
+    for _, cand in pairs(map.candidates) do
+      local lid = cand.lid
+      if lid ~= nil and state.get_dimension() == C.DIMENSION.MIRROR then
+        lid = map.rooms[lid].mirror_lid or lid
+      end
+      if lid ~= nil and cand.secret_type == secret_type then
+        local desc = rooms:Get(lid)
+        if desc and desc.DisplayFlags == 0 then
+          all_found = false
+          break
+        end
+      end
+    end
+
+    if all_found then
+      for cid, cand in pairs(map.candidates) do
+        if cand.secret_type == secret_type then
+          if cand.lid == nil then
+            map.candidates[cid] = nil
+          else
+            cand.marker_status = C.MARKER.STATUS.FOUND
+          end
+        end
+      end
+    end
+  end
 end
 
 local function update_marker()
@@ -70,7 +105,8 @@ local function update_marker()
         lid = entry.source_lid
       end
       if not lid then
-        error("room " .. entry.source_lid .. " should have a mirror lid")
+        log.error("room " .. entry.source_lid .. " should have a mirror lid")
+        goto continue
       end
 
       local desc = rooms:Get(lid)
@@ -106,7 +142,7 @@ end
 
 local function refresh()
   update_pos_origin()
-  map.clear_fake_if_all_found()
+  check_real_and_clear_fake()
   if state.can_see_entrance() or state.can_see_red() then
     local lid = Game():GetLevel():GetCurrentRoomDesc().ListIndex
     map.clear_fake_neighbors(lid)

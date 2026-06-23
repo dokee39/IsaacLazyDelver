@@ -24,6 +24,11 @@ function M.is_ignored()
   return ignored or has_changed or dimension == C.DIMENSION.OTHER
 end
 
+local lost_cursed = false
+function M.is_lost_cursed() return lost_cursed end
+local off_grid    = false
+function M.is_off_grid() return off_grid end
+
 
 M.items = {
   active = {
@@ -54,13 +59,6 @@ M.items = {
   },
 }
 
-function M.is_lost_cursed()
-  return Game():GetLevel():GetCurses() & LevelCurse.CURSE_OF_THE_LOST ~= 0
-end
-
-function M.is_off_grid()
-  return Game():GetLevel():GetCurrentRoomDesc().GridIndex < 0
-end
 
 function M.can_see_entrance()
   local can_see = false
@@ -142,6 +140,9 @@ function M.check()
   if not has_changed then
     dimension = get_current_dimension(level)
   end
+
+  lost_cursed = level:GetCurses() & LevelCurse.CURSE_OF_THE_LOST ~= 0
+  off_grid = level:GetCurrentRoomDesc().GridIndex < 0
 end
 
 

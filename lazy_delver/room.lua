@@ -1,6 +1,7 @@
 ---@module "lazy_delver.room"
 
 local C = require("lazy_delver.const")
+local geo = require("lazy_delver.geometry")
 local state = require("lazy_delver.state")
 local log = require("lazy_delver.log")
 local map = require("lazy_delver.map")
@@ -52,7 +53,7 @@ local function dfs(visited, grid, r, c)
   dfs(visited, grid, r, c + 1)
 end
 
-function M.obstacle_check()
+function M.door_check()
   if state.has_changed() then map.reload() end
   if state.is_ignored() then return end
 
@@ -60,8 +61,7 @@ function M.obstacle_check()
   log.info("=== Entered New Room ===")
   local room = map.rooms[lid]
   if not room then
-    log.info("list id: " .. lid)
-    log.info("")
+    log.info("list id: " .. lid) log.info("")
     return
   end
 
@@ -84,15 +84,26 @@ function M.obstacle_check()
   end
 
   for cid, cand in pairs(map.candidates) do
-    for _, entry in pairs(cand.entries) do
+    for dir, entry in pairs(cand.entries) do
       if entry.source_lid ~= lid or entry.checked then
         goto continue
       end
 
+      local door = room_obj:GetDoor(entry.doorslot)
+      local has_door = door
+                   and door.TargetRoomType ~= RoomType.ROOM_SECRET
+                   and door.TargetRoomType ~= RoomType.ROOM_SUPERSECRET
+                   and door.TargetRoomType ~= RoomType.ROOM_ULTRASECRET
+
       local door_pos = room_obj:GetDoorSlotPosition(entry.doorslot)
       local door_gid = room_obj:GetGridIndex(door_pos)
-      if door_gid >= 0 and visited[door_gid // w][door_gid % w]
-        and room_obj:IsDoorSlotAllowed(entry.doorslot) then
+      if door_gid < 0 then goto continue end
+
+      local delta = geo.DIR_DELTA[dir]
+      local ir = door_gid // w - delta.R
+      local ic = door_gid % w - delta.C
+
+      if visited[ir][ic] and not has_door then
         entry.checked = true
       elseif cand.lid == nil then
         map.candidates[cid] = nil
@@ -128,21 +139,17 @@ function M.bomb_check(effect)
         goto continue
       end
 
-      if cand.lid ~= nil then
-        map.clear_fake_if_all_found()
-        goto next_cand
-      end
-
       local door_pos = room_obj:GetDoorSlotPosition(entry.doorslot)
       local dist = (bomb_pos - door_pos):Length()
       if dist < BOMB_RADIUS then
-        map.candidates[cid] = nil
-        return
+        if not cand.lid then
+          map.candidates[cid] = nil
+          return
+        end
       end
 
       ::continue::
     end
-    ::next_cand::
   end
 end
 

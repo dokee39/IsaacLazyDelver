@@ -1,6 +1,7 @@
 ---@module "lazy_delver.log"
 
 local C = require("lazy_delver.const")
+local geo = require("lazy_delver.geometry")
 
 local M = {}
 
@@ -169,7 +170,7 @@ local function to_sym(cid, map)
     end
   end
 
-  local offsets = C.CELL.SHAPE_OFFSETS[map.rooms[cell.lid].shape]
+  local offsets = geo.SHAPE_OFFSETS[map.rooms[cell.lid].shape]
   local is_multi = (#offsets > 1)
   local lb, rb = "[", "]"
   if is_multi then
