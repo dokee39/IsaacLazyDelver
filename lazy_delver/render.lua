@@ -93,7 +93,7 @@ local function update_marker()
 
     local all_visible = true
     local all_checked = true
-    for _, entry in pairs(cand.entries) do
+    for _, entry in ipairs(cand.entries) do
       if not entry.checked then
         all_checked = false
       end

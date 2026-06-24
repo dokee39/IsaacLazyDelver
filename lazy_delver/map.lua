@@ -8,8 +8,8 @@ local state = require("lazy_delver.state")
 ---@class LD_Map
 local M = {}
 
----@alias LD_Cid integer cid: `cell` index in [`cells` / grid]
----@alias LD_Lid integer lid: [`room` / list] index in `rooms`
+---@alias LD_Cid integer  -- cid: `cell` index in [`cells` / grid]
+---@alias LD_Lid integer  -- lid: [`room` / list] index in `rooms`
 
 ---@class LD_Cell
 ---@field cid LD_Cid
@@ -19,18 +19,17 @@ local M = {}
 M.cells = {}
 
 ---@class LD_Entry
+---@field dir LD_Dir  -- source room -> neighbor direction
 ---@field source_lid LD_Lid
----@field via_cid LD_Cid?  -- ULTRA only; nil for REGULAR/SUPER
 ---@field doorslot DoorSlot
 ---@field checked boolean
----@alias LD_Entries table<LD_Dir, LD_Entry>
 
 ---@class LD_Candidate
 ---@field cid LD_Cid
 ---@field secret_type LD_SecretType
 ---@field lid LD_Lid?  -- real SECRET ListIndex; nil for fake candidates
 ---@field marker_status LD_MarkerStatus
----@field entries LD_Entries
+---@field entries LD_Entry[]
 
 ---@type table<LD_Cid, LD_Candidate>
 M.candidates = {}
@@ -38,7 +37,7 @@ M.candidates = {}
 ---@class LD_Room
 ---@field lid integer
 ---@field mirror_lid integer?
----@field tl_cid integer top-left cid
+---@field tl_cid integer  -- top-left cid
 ---@field cids integer[]
 ---@field shape RoomShape
 ---@field type RoomType
@@ -84,20 +83,48 @@ end
 ---@param cid LD_Cid
 local function build_entries(cid)
   local result = {}
+  local cell = M.cells[cid]
   local neighbors = geo.get_neighbors(cid)
+
+  if cell and cell.category == C.CELL.CATEGORY.SECRET and
+     M.rooms[cell.lid].type == C.SECRET_TYPE.ULTRA then
+    for _, mid_cid in pairs(geo.get_neighbors(cid)) do
+      for dir, src_cid in pairs(geo.get_neighbors(mid_cid)) do
+        local src = M.cells[src_cid]
+        if src and src.category ~= C.CELL.CATEGORY.SECRET then
+          local room = M.rooms[src.lid]
+          local door_dir = (dir + 2) % 4
+          local slot = geo.get_doorslot(door_dir, mid_cid - room.tl_cid, room.shape)
+          if not slot then
+            log.error("get doorslot failed, dir: " .. door_dir .. " room: " .. room.lid)
+          end
+          result[#result + 1] = {
+            dir = door_dir,
+            source_lid = src.lid,
+            doorslot = slot,
+            checked = false,
+          }
+        end
+      end
+    end
+    return result
+  end
+
   for dir, n_cid in pairs(neighbors) do
     local n_cell = M.cells[n_cid]
     if n_cell and n_cell.category ~= C.CELL.CATEGORY.SECRET then
       local room = M.rooms[n_cell.lid]
       local door_dir = (dir + 2) % 4
-      local doorslot = geo.get_doorslot(door_dir, cid - room.tl_cid, room.shape)
-      if doorslot then
-        result[door_dir] = {
-          source_lid = n_cell.lid,
-          doorslot = doorslot,
-          checked = false,
-        }
+      local slot = geo.get_doorslot(door_dir, cid - room.tl_cid, room.shape)
+      if not slot then
+        log.error("get doorslot failed, dir: " .. door_dir .. " room: " .. room.lid)
       end
+      result[#result + 1] = {
+        dir = door_dir,
+        source_lid = n_cell.lid,
+        doorslot = slot,
+        checked = false,
+      }
     end
   end
   return result
@@ -171,6 +198,102 @@ local function find_fakes()
   end
 end
 
+local function find_ultra_fakes()
+  local blocked = {}
+
+  for cid, cell in pairs(M.cells) do
+    blocked[cid] = true
+    if cell.category ~= C.CELL.CATEGORY.SECRET then
+      for _, n_cid in pairs(geo.get_neighbors(cid)) do
+        blocked[n_cid] = true
+      end
+    end
+  end
+
+  for cid = 0, C.MAP.SIZE - 1 do
+    local cell = M.cells[cid]
+    if cell then
+      blocked[cid] = true
+      goto continue
+    end
+
+    local empty_n_cids = {}
+    local non_empties = {}
+    local block_empties = false
+    for dir, n_cid in pairs(geo.get_neighbors(cid)) do
+      local n_cell = M.cells[n_cid]
+      if not n_cell or n_cell.category == C.CELL.CATEGORY.SECRET then
+        empty_n_cids[#empty_n_cids + 1] = n_cid
+      elseif n_cell.category == C.CELL.CATEGORY.BOSS or
+             M.rooms[n_cell.lid].type == RoomType.ROOM_CURSE then
+        block_empties = true
+      else
+        non_empties[#non_empties + 1] = {
+          dir = dir, cid = n_cid
+        }
+      end
+    end
+
+    if #non_empties == 0 then
+      goto continue
+    end
+
+    blocked[cid] = true
+    local existing = M.candidates[cid]
+    if existing and existing.secret_type == C.SECRET_TYPE.ULTRA then
+      M.candidates[cid] = nil
+    end
+
+    for _, e_cid in ipairs(empty_n_cids) do
+      if block_empties then break end
+
+      if not blocked[e_cid] then
+        if not M.candidates[e_cid] then
+          M.candidates[e_cid] = {
+            cid = e_cid,
+            secret_type = C.SECRET_TYPE.ULTRA,
+            marker_status = C.MARKER.STATUS.HIDDEN,
+            lid = nil,
+            entries = {},
+          }
+        end
+
+        local cand = M.candidates[e_cid]
+        for _, ne in ipairs(non_empties) do
+          local ne_room = M.rooms[M.cells[ne.cid].lid]
+          local dir = (ne.dir + 2) % 4
+          local slot = geo.get_doorslot(dir, cid - ne_room.tl_cid, ne_room.shape)
+          if not slot then block_empties = true break end
+          cand.entries[#cand.entries + 1] = {
+            dir = dir,
+            source_lid = ne_room.lid,
+            doorslot = slot,
+            checked = false,
+          }
+        end
+      end
+    end
+
+    if block_empties then
+      for _, e_cid in ipairs(empty_n_cids) do
+        blocked[e_cid] = true
+        local cand = M.candidates[e_cid]
+        if cand and cand.secret_type == C.SECRET_TYPE.ULTRA then
+          M.candidates[e_cid] = nil
+        end
+      end
+    end
+    ::continue::
+  end
+
+  for cid, cand in pairs(M.candidates) do
+    if cand.secret_type == C.SECRET_TYPE.ULTRA and
+       not cand.lid and #cand.entries < 2 then
+      M.candidates[cid] = nil
+    end
+  end
+end
+
 
 function M.reload()
   local level = Game():GetLevel()
@@ -198,6 +321,7 @@ function M.reload()
   end
 
   find_fakes()
+  find_ultra_fakes()
 
   log.info("Map loading complete!\n")
   log.print_map(M):info()

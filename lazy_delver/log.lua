@@ -163,7 +163,7 @@ local function to_sym(cid, map)
       return SECRET_SYM[cand.secret_type]
     else
       local checked = true
-      for _, entry in pairs(cand.entries) do
+      for _, entry in ipairs(cand.entries) do
         checked = checked and entry.checked
       end
       return FAKE_SYM[cand.secret_type][checked]
@@ -209,7 +209,6 @@ end
 ---@return LD_Log
 function M.print_map(map)
   local lines = {}
-  lines[#lines + 1] = "Total rooms: " .. (#map.rooms + 1)
 
   for lid = 0, #map.rooms do
     if map.rooms[lid].lid == lid then
