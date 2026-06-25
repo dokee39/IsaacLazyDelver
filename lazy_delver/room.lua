@@ -87,6 +87,7 @@ function M.door_check()
     log.info("list id: " .. lid) log.info("")
     return
   end
+  lid = room.lid
 
   local room_obj = Game():GetRoom()
   local w = room_obj:GetGridWidth()
@@ -142,6 +143,7 @@ function M.bomb_check(effect)
   local lid = Game():GetLevel():GetCurrentRoomDesc().ListIndex
   local room = map.rooms[lid]
   if not room then return end
+  lid = room.lid
 
   local room_obj = Game():GetRoom()
   local bomb_pos = effect.Position

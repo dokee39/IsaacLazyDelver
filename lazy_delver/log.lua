@@ -103,8 +103,8 @@ local STAGE_NAME = {
 
 ---@param s string
 function M.info(s)
-  print(s)
-  Isaac.DebugString(s)
+  -- print(s)
+  -- Isaac.DebugString(s)
 end
 ---@param s string
 function M.error(s)

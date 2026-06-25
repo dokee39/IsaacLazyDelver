@@ -35,11 +35,13 @@ M.items = {
     { mc = ModCallbacks.MC_USE_ITEM, type = CollectibleType.COLLECTIBLE_CRYSTAL_BALL,    clear = false },
     { mc = ModCallbacks.MC_USE_ITEM, type = CollectibleType.COLLECTIBLE_BOOK_OF_SECRETS, clear = false },
     { mc = ModCallbacks.MC_USE_ITEM, type = CollectibleType.COLLECTIBLE_DADS_KEY,        clear = true },
+    { mc = ModCallbacks.MC_USE_ITEM, type = CollectibleType.COLLECTIBLE_RED_KEY,         clear = false },
 
     { mc = ModCallbacks.MC_USE_CARD, type = Card.CARD_SUN,             clear = false },
     { mc = ModCallbacks.MC_USE_CARD, type = Card.CARD_WORLD,           clear = false },
     { mc = ModCallbacks.MC_USE_CARD, type = Card.RUNE_ANSUZ,           clear = false },
     { mc = ModCallbacks.MC_USE_CARD, type = Card.CARD_GET_OUT_OF_JAIL, clear = true },
+    { mc = ModCallbacks.MC_USE_CARD, type = Card.CARD_CRACKED_KEY,     clear = false },
     { mc = ModCallbacks.MC_USE_CARD, type = Card.CARD_SOUL_CAIN,       clear = true },
 
     { mc = ModCallbacks.MC_USE_PILL, type = PillEffect.PILLEFFECT_SEE_FOREVER, clear = false },

@@ -83,6 +83,24 @@ local function check_real_and_clear_fake()
   end
 end
 
+local function clear_ultra_fake()
+  for cid, cand in pairs(map.candidates) do
+    if cand.secret_type ~= C.SECRET_TYPE.ULTRA then goto continue end
+    if cand.lid then goto continue end
+
+    local level = Game():GetLevel()
+    for _, n_cid in pairs(geo.get_neighbors(cid)) do
+      local n_desc = level:GetRoomByIdx(n_cid)
+      if n_desc and n_desc.Data then
+        map.candidates[cid] = nil
+        break
+      end
+    end
+
+    ::continue::
+  end
+end
+
 local function update_marker()
   local rooms = Game():GetLevel():GetRooms()
 
@@ -139,7 +157,6 @@ function M.tab_hold_check()
   end
 end
 
-
 local function refresh()
   update_pos_origin()
   check_real_and_clear_fake()
@@ -147,6 +164,7 @@ local function refresh()
     local lid = Game():GetLevel():GetCurrentRoomDesc().ListIndex
     map.clear_fake_neighbors(lid)
   end
+  clear_ultra_fake()
   update_marker()
   need_refresh = false
 end
